@@ -18,9 +18,13 @@ Gated by the `ai.web_agent` feature flag (`GET …/features` or Admin → AI). O
 OSS**, enable the flag if the dock is missing — do **not** send users to a billing upgrade
 page.
 
-When disabled, the Home agent dock is hidden and the API returns `404`. When enabled but
-AI credit is exhausted (if metering is configured), new chat sessions may return HTTP **402**
-(`AI_CREDIT_EXHAUSTED`) — on self-host, fix provider keys / credit config rather than selling a plan.
+When disabled, the Home agent dock is hidden and the API returns `404`. There is no AI
+credit/billing system in this build — every request is allowed. If no AI provider is
+configured (no platform key, no workspace BYO key), the Home agent doesn't error — it
+replies in the chat thread itself: instance admins get an actionable message naming the
+env vars to set (`ANTHROPIC_API_KEY`, `VERCEL_AI_GATEWAY`, or `OPENAI_API_KEY` — e.g.
+`npx wrangler secret put ANTHROPIC_API_KEY`); other members are told to ask their admin.
+Never send anyone to a billing page — there isn't one.
 
 ## What it can do
 
@@ -37,10 +41,10 @@ AI credit is exhausted (if metering is configured), new chat sessions may return
 | **Present a deck** | **`present_artifact`** — turn a published dashboard/report into a new private slides artifact (AI outline + reveal.js publish) |
 | **Watch a metric** | **`watch_metric`** — one-click table watch; bell alert when a value moves ≥ threshold (hourly sweep) |
 | **File library** | **`list_files`** / **`read_file`** — browse uploads, chat attachments, emailed-in files, and phone shares; see provenance and prior artifacts built from the same file |
-| **Knowledge** | **`knowledge_search`** / **`knowledge_get`** — when Knowledge is enabled, search and read distilled workspace notes instead of re-reading every page |
+| **Knowledge** | **`knowledge_search`** / **`knowledge_get`** / **`knowledge_entity`** / **`knowledge_facts`** / **`knowledge_status`** — when Knowledge is enabled: cited passages from uploaded Files and pages, distilled notes, entities and quoted facts (same as the MCP connector) |
 | **Build from a file** | Pass `source_file_id` on confirmed **build artifact** after `read_file` — spreadsheets, decks, and CSVs become live pages |
 | Canvas actions (Home only) | Home agent adds tools to search and open artifacts in the workspace canvas |
-| Streaming builds | Confirming a **build artifact** action streams progress steps, then returns the new page URL |
+| Streaming builds | Confirming a **build artifact** action streams progress steps, then returns the new page URL. The page is published **private**, in the workspace the chat is scoped to (personal on personal Home) |
 
 Destructive or write actions always go through a **confirmation** step. The assistant cannot mutate data stores, publish artifacts without confirmation, or run non-`SELECT` SQL.
 
@@ -60,11 +64,11 @@ A **paperclip** in the composer uploads a file into your asset library and attac
 
 If you **Share → ShareOut** from another app on a phone with the ShareOut PWA installed, Home opens with the file already attached in the composer — ready to ask *"turn this into a dashboard."*
 
-Files emailed to the workspace inbox (`{slug}@inbox.shareout.site`) also appear in **`list_files`** with an *emailed in* origin label. When a filename previously built an artifact, the assistant is prompted to **update** that page instead of creating a duplicate.
+Files emailed to the workspace inbox (`{slug}@inbox.example.com`) also appear in **`list_files`** with an *emailed in* origin label. When a filename previously built an artifact, the assistant is prompted to **update** that page instead of creating a duplicate.
 
 ## REST API
 
-All routes require a signed-in session or bearer token and workspace membership. The `ai.web_agent` flag must be enabled. New sessions may return **402** `AI_CREDIT_EXHAUSTED` when AI credit is spent (if metering is on).
+All routes require a signed-in session or bearer token and workspace membership. The `ai.web_agent` flag must be enabled. If no AI provider is configured, the route still responds normally (no error) — the reply text itself explains the gap, differently for admins vs. members (see Availability above). No billing gate.
 
 **Home agent** (personal or workspace Home — includes canvas tools):
 

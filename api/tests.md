@@ -45,7 +45,8 @@ and easy to generate. Phase 1 uses read-only contract assertions:
 ```
 
 `store` is `table:<name>` or `json:<key>`. `expect` supports `columns`, `minRows`,
-`maxRows` (tables) and `schema` (json: a field→type map of `string|number|boolean|object|array|null`).
+`maxRows` (tables) and `schema` (json: a field→type map of `string|number|boolean|object|array|null`). A `columns`
+check passes when each column appears in at least one of the table's 50 most recent rows.
 
 Smoke + policy run automatically with no spec. The spec only adds contract checks.
 
@@ -70,7 +71,7 @@ POST /v1/artifacts/:id/tests/run       → run now against the live version
 Enable monitor mode with a contract:
 
 ```bash
-curl -X PUT https://shareout.site/v1/artifacts/$ID/tests \
+curl -X PUT $ORIGIN/v1/artifacts/$ID/tests \
   -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
   -d '{"enabled":true,"mode":"monitor","spec":{"contract":[{"store":"table:sales","expect":{"minRows":1}}]}}'
 ```
@@ -78,7 +79,7 @@ curl -X PUT https://shareout.site/v1/artifacts/$ID/tests \
 Run on demand (bypasses the per-artifact debounce):
 
 ```bash
-curl -X POST https://shareout.site/v1/artifacts/$ID/tests/run \
+curl -X POST $ORIGIN/v1/artifacts/$ID/tests/run \
   -H "Authorization: Bearer $TOKEN"
 ```
 
@@ -91,7 +92,7 @@ already has enabled against the live version (no extra config to author). The wo
 cron is **hourly**, so schedules are hourly-granular.
 
 ```bash
-curl -X POST https://shareout.site/v1/artifacts/$ID/jobs \
+curl -X POST $ORIGIN/v1/jobs \
   -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
   -d '{"artifact_id":"'$ID'","action":"artifact_test","trigger_type":"cron","schedule":"0 * * * *","config":{}}'
 ```

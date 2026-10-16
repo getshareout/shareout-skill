@@ -34,7 +34,7 @@ Workspace roles:
 | --- | --- |
 | `owner` | Full workspace control. |
 | `admin` | Manage members, policy, subdomain, settings, workspace admin tasks. |
-| `member` | Create/edit own artifacts; view workspace-visible artifacts. |
+| `member` | Create/edit own artifacts; view workspace-visible artifacts. Create Team Space folders and rename/delete the ones they created, unless an admin turned [`members_can_create_folders`](#workspace-settings) off. |
 
 Endpoints:
 
@@ -42,15 +42,68 @@ Endpoints:
 | --- | --- | --- |
 | `GET` | `/v1/workspaces/{id}/members` | List members. |
 | `POST` | `/v1/workspaces/{id}/members` | Add member; policy-gated. Re-posting an existing member updates their role (`member` or `admin`). |
-| `DELETE` | `/v1/workspaces/{id}/members/{userId}` | Remove member. |
-| `POST` | `/v1/workspaces/{id}/members/invite` | Invite one or more members. |
+| `DELETE` | `/v1/workspaces/{id}/members/{userId}` | Remove member. Also drops their Client (Sharee) links and `external_user` grants in this workspace — the membership edge alone does not gate grant access. |
+| `POST` | `/v1/workspaces/{id}/members/invite` | Invite many people at once — see [Invite people](#invite-people). Existing members keep their role. |
 | `GET` | `/v1/workspaces/{id}/members/metrics` | Member activity metrics. |
 | `GET` | `/v1/workspaces/{id}/people` | Workspace people picker/list. |
 | `POST` | `/v1/workspaces/{id}/logo` | Upload workspace logo (image). Admin+. |
 | `DELETE` | `/v1/workspaces/{id}/logo` | Remove workspace logo. Admin+. |
 
+### Invite people
+
+Admin/owner only. Pass the addresses however the user gave them: an array, or **one
+string** of pasted text (commas, newlines, `Name <email>`, a spreadsheet column).
+
+```bash
+curl -sS -X POST "$ORIGIN/v1/workspaces/$WS/members/invite" \
+  -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+  -d '{"emails":"Ana <ana@example.com>, luis@example.com\nbad@","role":"member","message":"Te sumo al equipo"}'
+```
+
+```json
+{
+  "results": [
+    { "email": "bad@", "code": "invalid_email", "status": "skipped" },
+    { "email": "ana@example.com", "code": "invited", "status": "invited", "email_sent": true },
+    { "email": "luis@example.com", "code": "already_member", "status": "updated" }
+  ],
+  "summary": { "invited": 1, "added": 0, "already_member": 1, "invalid_email": 1, "domain_not_allowed": 0 }
+}
+```
+
+- `code`: `invited` (got a 7-day join link) · `added` (had an account; added + notified) ·
+  `already_member` (nothing changed) · `invalid_email` · `domain_not_allowed` (outside the
+  [membership policy](#workspace-membership-policy)).
+- `invite_url` appears only when the invite email did **not** go out (e.g. no email on the
+  instance) — hand that link to the person.
+- Max 100 valid addresses per call (`400 TOO_MANY_EMAILS`); split bigger lists.
+- To change someone's role use `POST /v1/workspaces/{id}/members` `{ "email", "role" }`.
+- Whole company domain instead of a list: set `allowed_domains` in the
+  [membership policy](#workspace-membership-policy) — anyone signing in with that domain
+  joins as a member, and `$ORIGIN/auth/login?redirect=/home?workspace={id}` is a link you
+  can share with the team.
+
 Seat usage: `GET /v1/workspaces/{id}` may include `seats: { used, limit, remaining }`.
 On self-host, `limit` is typically unlimited / unset — do not invent seat paywalls.
+
+## Workspace Settings
+
+```http
+GET   /v1/workspaces/{workspaceId}
+PATCH /v1/workspaces/{workspaceId}
+Authorization: Bearer {token}
+Content-Type: application/json
+
+{ "members_can_create_folders": false }
+```
+
+- `PATCH` requires `admin` or `owner` (`403 INSUFFICIENT_ROLE` otherwise); `GET` requires membership.
+  It also takes `name`, `description` and `slug`; omit a field to leave it unchanged.
+- `members_can_create_folders` (boolean, default `true`): when on, members create
+  [Team Space folders](folders.md) and rename/delete the ones they created; folders made
+  by someone else stay admin/owner-only. When off, only admins/owners create, rename or
+  delete folders and members get `403 ADMIN_REQUIRED`. A non-boolean value is
+  `400 VALIDATION_ERROR`. In the app: **Admin → Settings → Team Space folders**.
 
 ## Workspace Membership Policy
 
@@ -89,7 +142,10 @@ Rules:
 - Send `[]` to clear a list.
 - Invalid domains return `400 INVALID_DOMAIN`.
 - Invalid emails return `400 INVALID_EMAIL`.
-- Inviting an email outside policy returns `403 DOMAIN_NOT_ALLOWED`.
+- Inviting an email outside policy returns `403 DOMAIN_NOT_ALLOWED` (bulk invite: per-email `code: "domain_not_allowed"`).
+- Anyone who signs in with an email in `allowed_domains` auto-joins as `member`, so public
+  mail providers (gmail.com, outlook.com, …) are refused with `400 PUBLIC_EMAIL_DOMAIN` —
+  put individual addresses in `allowed_emails` instead.
 
 ## Subdomain
 
@@ -156,7 +212,7 @@ Authorization: Bearer {token}
 }
 ```
 
-Records member add/remove, bulk invite, ownership transfer, subdomain enable/disable, membership-policy changes, connection create/delete, and session-policy changes. Retained one year.
+Records member add/remove, bulk invite, ownership transfer, subdomain enable/disable, membership-policy changes, connection create/delete, session-policy changes, and `members_can_create_folders` changes. Retained one year.
 
 ## Workspace Context
 
@@ -294,7 +350,7 @@ Unified run detail across crew, scheduled job, and metric-alert surfaces. Admin+
 | --- | --- | --- | --- |
 | `GET` | `/v1/workspaces/{id}/invites` | Admin+ | List unclaimed invites. |
 | `DELETE` | `/v1/workspaces/{id}/invites/{inviteId}` | Admin+ | Revoke pending invite. |
-| `POST` | `/v1/workspaces/{id}/invites/{inviteId}/resend` | Admin+ | Resend invite email. |
+| `POST` | `/v1/workspaces/{id}/invites/{inviteId}/resend` | Admin+ | New join link → `{ ok, inviteUrl }`. Default emails it and expires older links; `{ "notify": false }` only returns the link (copy/paste, older links stay valid). |
 
 ## Workspace Shared Tables
 
@@ -358,14 +414,15 @@ Share folders and artifacts **outside** the workspace with typed Client orgs (cl
 | `POST` | `/v1/workspaces/{id}/sharees` | Admin+ | Create Client `{ name, type }`. |
 | `GET/PATCH/DELETE` | `/v1/workspaces/{id}/sharees/{sid}` | Admin+ | Read/update/delete Client (branding, properties). |
 | `GET/POST/DELETE` | `/v1/workspaces/{id}/sharees/{sid}/members[/{uid}]` | Admin+ | Invite/remove external members. |
-| `GET/POST/DELETE` | `/v1/workspaces/{id}/grants[/{gid}]` | Admin+ | Folder/artifact/**file** grants (`view`/`comment`/`create`/`edit`). |
-| `POST` | `/v1/workspaces/{id}/share-person` | Admin+ | Share one file/folder with one outside email — `{ email, resource_type, resource_id, capability }`. |
+| `GET/POST/DELETE` | `/v1/workspaces/{id}/grants[/{gid}]` | Admin+ | Folder/artifact/**file** grants (`view`/`comment`/`create`/`edit`). A folder's manager (its creator, while members manage their folders) may also `GET ?resource_type=folder&resource_id=…` and `DELETE` grants on that folder. |
+| `POST` | `/v1/workspaces/{id}/share-person` | Admin+ (or the folder's manager) | Share one file/folder with one outside email — `{ email, resource_type, resource_id, capability, expires_in_days?, expires_at? }`; re-share replaces the expiry. |
 | `GET/POST/DELETE` | `/v1/workspaces/{id}/sharees/{sid}/members/{uid}/tokens[/{tid}]` | Admin+ | Scoped external `sot_` tokens (never `artifacts:publish`). |
 | `GET` | `/v1/workspaces/{id}/sharees/{sid}/activity` | Admin+ | Read receipts for one Client. |
 | `GET` | `/v1/workspaces/{id}/sharee-activity` | Admin+ | Read receipts across all Clients. |
+| `GET` | `/v1/workspaces/{id}/folders/{fid}/activity` | Folder manager | Who opened what across one folder's subtree (max 100). |
 | `GET/PUT/DELETE` | `/v1/workspaces/{id}/sharees/{sid}/context[/{name}]` | Member read / admin write | Per-client private notes (AI memory). |
 
-External members browse granted pages and files at **`GET /shared`** (branded portal). If create returns `403 EXTERNAL_SHARING_NOT_ENTITLED` on self-host, treat as feature/config — not a plan to buy.
+External members browse granted pages and files at **`GET /shared`** (branded portal); **`/shared?folder=<id>`** is one folder's client portal, where a folder invite's join link lands. If create returns `403 EXTERNAL_SHARING_NOT_ENTITLED` on self-host, treat as feature/config — not a plan to buy.
 
 ## Workspace Library
 
@@ -436,7 +493,7 @@ Per-scope asset library: upload reusable files, group into versioned **deliverab
 | --- | --- | --- | --- |
 | `GET` | `/v1/assets` or `…/workspaces/{id}/assets` | Member | List deliverables, loose blobs, bucket usage. |
 | `POST` | `…/assets/upload` → `PUT …/_upload/{token}` | Member | Two-step upload. |
-| `POST` | `…/assets/deliverables` | Member | `{ blobId, name }` → versioned deliverable. |
+| `POST` | `…/assets/deliverables` | Member | `{ blobId, name, visibility? }` → versioned deliverable. `visibility`: `team` (default — workspace members only; bytes need a signed-in member), `private` (owner + direct shares), `workspace` (anyone with the link — use this for files embedded in artifacts). |
 | `POST` | `…/assets/deliverables/{id}/version` | Member | Add a new version. |
 | `POST` | `…/assets/collections` | Member | Bundle deliverables. |
 | `POST` | `…/assets/collections/{id}/share` | Member | `{ expiresAt?, gate?, password?, domains? }` → `/d/<token>`. |
@@ -459,11 +516,18 @@ Opt-in learned library. Full guide: [knowledge.md](knowledge.md). On self-host, 
 | `GET` | `/v1/workspaces/{id}/knowledge` | Member+ | Settings + counts. |
 | `GET` | `/v1/workspaces/{id}/knowledge/status` | Member+ | Training progress (24h window). |
 | `GET` | `/v1/workspaces/{id}/knowledge/tree` | Member+ | Note summaries by kind. |
-| `GET` | `/v1/workspaces/{id}/knowledge/files/{path}` | Member+ | One note (full body). |
+| `GET` | `/v1/workspaces/{id}/knowledge/files/{path}` | Member+ | One note (full body) + `source_artifacts` `[{ id, slug, title, url, available }]`. |
+| `GET` | `/v1/workspaces/{id}/knowledge/from/{artifactId}` | Member+ | Notes learned from one artifact `{ enabled, notes: [{ path, kind, id, title }] }`; empty when you can't open it. |
 | `PUT` | `/v1/workspaces/{id}/knowledge/files/{path}` | Member+ | Upsert note markdown. |
 | `DELETE` | `/v1/workspaces/{id}/knowledge/files/{path}?forget=1` | Admin+ | Delete; `forget=1` stops re-learn. |
 | `POST` | `/v1/workspaces/{id}/knowledge/enable` | Admin+ | `{ "enabled": true }`. |
-| `POST` | `/v1/workspaces/{id}/knowledge/backfill` | Admin+ | Queue up to 200 pages → `{ queued, kicked }`. |
+| `POST` | `/v1/workspaces/{id}/knowledge/backfill` | Admin+ | Queue up to 200 pages for notes + every page and File for search → `{ queued, kicked, corpus, corpusRemaining }`. |
+| `GET` | `/v1/workspaces/{id}/knowledge/search?q=&limit=&format=md` | Member+ | Cited passages from Files and pages. |
+| `GET` | `/v1/workspaces/{id}/knowledge/sources?limit=` | Member+ | Learned sources: counts by status + recent list. |
+| `GET` | `/v1/workspaces/{id}/knowledge/entities?type=&q=&limit=` | Member+ | Entities (clients, people, products…) by mentions. |
+| `GET` | `/v1/workspaces/{id}/knowledge/entities/{entityId}?format=md` | Member+ | One entity: facts, relations, quoted mentions. |
+| `GET` | `/v1/workspaces/{id}/knowledge/graph?focus=&depth=&limit=` | Member+ | Knowledge graph nodes + edges. |
+| `GET` | `/v1/workspaces/{id}/knowledge/usage?days=30` | Admin+ | Metered Knowledge cost (AI, storage, vectors), micro-USD, tracking only. |
 
 ## Artifact delivery (one-shot)
 

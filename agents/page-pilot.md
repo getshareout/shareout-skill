@@ -11,7 +11,7 @@ Built on the open-source `page-agent` library (MIT, alibaba/page-agent), served 
 Page Pilot is **off by default**. Enable it per-artifact via the agent admin config endpoint (owner or editor auth — session or API token):
 
 ```bash
-curl -X POST "https://shareout.site/v1/data/{artifactId}/agent/admin/config" \
+curl -X POST "$ORIGIN/v1/data/{artifactId}/agent/admin/config" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{ "pilot_enabled": true }'
@@ -163,8 +163,8 @@ Pilot shares the workspace AI balance with visitor chat. Monitor usage via the e
 <html>
 <head>
   <title>Orders Dashboard</title>
-  <link rel="stylesheet" href="https://shareout.site/sdk/shareout.css">
-  <script src="https://shareout.site/sdk/shareout.js"></script>
+  <link rel="stylesheet" href="/sdk/shareout.css">
+  <script src="/sdk/shareout.js"></script>
 </head>
 <body>
   <div class="so-toolbar">

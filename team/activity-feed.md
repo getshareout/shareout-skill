@@ -17,6 +17,7 @@ Each row is a single event the viewer should act on:
 | --- | --- | --- |
 | `comment` | members | Unresolved comments on artifacts you can see (not your own) |
 | `reply` | members | Replies in threads you participate in |
+| `mention` | self | Comments whose `mentions` name one of your emails — matched on the stored array, so it agrees with the email/Telegram notifier |
 | `share` | self | Artifacts shared directly with you |
 | `access` | admins | Access requests to private/workspace pages |
 | `alert` | members | Metric-alert triggers |
@@ -27,6 +28,9 @@ Each row is a single event the viewer should act on:
 | `file` | admins | Spreadsheets and files members forward to the workspace file inbox |
 
 Failed **job or crew runs** (`run` kind) are promoted into Needs You at query time even though successful runs appear only in Pulse.
+
+A comment that names you is classified as `mention`, not `comment`/`reply`, so turning
+the general comment stream down does not silence being named.
 
 ## Pulse (ambient kinds)
 

@@ -39,13 +39,13 @@ Run this before every publish. If a box can't be honestly ticked, it's not done.
 - [ ] **Public needs a verified email.** A bootstrap/no-email account is silently allowed to publish, but the result is forced **private** (response carries `visibility_downgraded: true` + `requested_visibility`). Link an email to actually go public.
 - [ ] **File MIME must be on the publish allowlist** (~22 types: html/css/js/json, common images, fonts, text, csv, pdf, wasm…). Other types (e.g. `application/octet-stream`, `text/typescript`) → `VALIDATION_ERROR` 400.
 - [ ] **Size caps:** ≤ 100 MB per file, ≤ 500 MB total per publish, plus a per-account storage quota (`STORAGE_LIMIT_EXCEEDED` 413). Heavy media belongs in `sdk.blobs`, not the bundle.
-- [ ] **Rate limit:** 30 publishes/hour per account (`RATE_LIMIT_EXCEEDED` 429). Batch iterations locally, don't republish in a tight loop.
+- [ ] **Rate limit:** 100 publishes/day per account (`RATE_LIMIT_EXCEEDED` 429; the body states the limit and UTC reset time, plus `retryAfter`/`Retry-After`). Batch iterations locally, don't republish in a tight loop.
 
 ## SDK & data
 
 - [ ] Init is `await ShareOut.create()`, wrapped in try/catch.
 - [ ] Every store used (`json` keys, `table()` names, `connection()` names) is **declared in the manifest** with `default` sample data for editor preview.
-- [ ] Dynamic data is painted via **`data-shareout-binding` / templates**, not imperative `getElementById` + `innerHTML`.
+- [ ] Dynamic data is declared with **`data-shareout-binding` / templates** and painted by `paintBindings(sdk)` (bindings render nothing on their own — a viewer would see the placeholders), not imperative `getElementById` + `innerHTML`.
 - [ ] No raw `fetch` to `/v1/data/...` — SDK methods only.
 - [ ] Charts are **SVG (Plotly)** if the artifact is delivered by screenshot (Slack/PDF/thumbnail/email); `<canvas>` only for view-only interactive. See [stack.md](stack.md#charts).
 
@@ -65,7 +65,7 @@ Run this before every publish. If a box can't be honestly ticked, it's not done.
 
 ## Then publish
 
-Pipe the payload to `curl` (Cloudflare blocks Python `requests`). See [Publishing](../SKILL.md#publishing). Read back the advisory `editor_readiness` profile and share the one-line summary with the user — treat it as guidance, not a gate.
+Pipe the payload to `curl` (Cloudflare blocks Python `urllib` with `403 error code: 1010`). See [Publishing](../SKILL.md#publishing). Read back the advisory `editor_readiness` profile and share the one-line summary with the user — treat it as guidance, not a gate.
 
 ## Related
 

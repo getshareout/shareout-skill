@@ -1,6 +1,6 @@
 # Artifact Types
 
-ShareOut supports multiple artifact types beyond HTML. Each type auto-detects from MIME/extension and renders with a specialized viewer.
+ShareOut supports multiple artifact types beyond HTML. Each type auto-detects from MIME/extension. Text types render with a specialized viewer; binary types (`pdf`, `image`, `video`) are served as the raw file.
 
 ## Supported Types
 
@@ -11,9 +11,9 @@ ShareOut supports multiple artifact types beyond HTML. Each type auto-detects fr
 | `markdown` | Stable | View-only | Source editor at `/a/{slug}/edit` |
 | `json` | Stable | View-only | Source editor at `/a/{slug}/edit` |
 | `txt` | Stable | View-only | Source editor at `/a/{slug}/edit` |
-| `pdf` | Planned | - | - |
-| `image` | Planned | - | - |
-| `video` | Planned | - | - |
+| `pdf` | Stable — served raw (browser's PDF viewer; Studio renders it) | - | Not editable (`409 NOT_EDITABLE`) |
+| `image` | Stable — served raw (browser's image view) | - | Not editable (`409 NOT_EDITABLE`) |
+| `video` | Stable — served raw (browser's video player) | - | Not editable (`409 NOT_EDITABLE`) |
 
 ## Type Detection
 
@@ -28,6 +28,9 @@ text/markdown          → markdown
 text/x-markdown        → markdown
 application/json       → json
 text/plain             → txt
+application/pdf        → pdf
+image/*                → image
+video/*                → video
 ```
 
 ### Extension → Type Mapping
@@ -38,9 +41,18 @@ text/plain             → txt
 .md, .markdown         → markdown
 .json                  → json
 .txt                   → txt
+.pdf                   → pdf
+.png, .jpg, .jpeg, .gif, .webp, .avif, .svg → image
+.mp4, .webm, .mov      → video
 ```
 
+Binary files are sent base64 (`"encoding": "base64"`). Allowed binary MIME types:
+`application/pdf`, `image/png`, `image/jpeg`, `image/gif`, `image/webp`, `image/avif`,
+`image/svg+xml`, `video/mp4`, `video/webm`, `video/quicktime` (`.mov`).
+
 ## Publishing Non-HTML Artifacts
+
+A single-file publish needs no `entrypoint` — it defaults to that file. With several files, set `entrypoint` to the main one (otherwise `index.html` is assumed and a `400 VALIDATION_ERROR` with `param: "entrypoint"` is returned).
 
 ### CSV Example
 
@@ -57,7 +69,7 @@ print(json.dumps({
     "mime": "text/csv"
   }]
 }))
-' | curl -sS -X POST 'https://shareout.site/v1/publish' \
+' | curl -sS -X POST '$ORIGIN/v1/publish' \
   -H "Authorization: Bearer $TOKEN" \
   -H 'Content-Type: application/json' \
   --data-binary @-
@@ -68,7 +80,7 @@ print(json.dumps({
 {
   "artifact": { "id": "art_xxx", "type": "csv" },
   "version": { "id": "ver_xxx", "version_no": 1 },
-  "deployment": { "url": "https://shareout.site/a/sales-data/" }
+  "deployment": { "url": "$ORIGIN/a/sales-data/" }
 }
 ```
 
@@ -85,7 +97,7 @@ print(json.dumps({
     "mime": "text/markdown"
   }]
 }))
-' | curl -sS -X POST 'https://shareout.site/v1/publish' \
+' | curl -sS -X POST '$ORIGIN/v1/publish' \
   -H "Authorization: Bearer $TOKEN" \
   -H 'Content-Type: application/json' \
   --data-binary @-
@@ -104,7 +116,7 @@ print(json.dumps({
     "mime": "application/json"
   }]
 }))
-' | curl -sS -X POST 'https://shareout.site/v1/publish' \
+' | curl -sS -X POST '$ORIGIN/v1/publish' \
   -H "Authorization: Bearer $TOKEN" \
   -H 'Content-Type: application/json' \
   --data-binary @-
@@ -230,7 +242,7 @@ Non-HTML artifacts open a **source editor** at the same URL as the visual studio
 | Load | `GET /a/{slug}/edit` serves a Monaco-based editor with the current file content |
 | Publish | `POST /a/{slug}/edit/source/publish` with `{ "content": "..." }` |
 | Versioning | Each publish creates a new version (same as `POST /v1/publish`) |
-| Response | `{ "success": true, "versionNo": 2, "url": "https://shareout.site/a/{slug}/" }` |
+| Response | `{ "success": true, "versionNo": 2, "url": "$ORIGIN/a/{slug}/" }` |
 
 Agents normally publish via `POST /v1/publish`. The source editor is for human owners editing text artifacts in the browser. Full details: [core/source-editor.md](../core/source-editor.md).
 

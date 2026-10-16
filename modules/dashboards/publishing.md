@@ -1,5 +1,7 @@
 # Publishing
 
+> **Not available — design spec only.** The `sdk.dashboards.*` module has no backend: `/v1/data/{artifactId}/dashboards` returns 404 on every deployment. Do not build on it. For a dashboard with data, use [`sdk.table`](../../sdk/table.md) / [`sdk.json`](../../sdk/json.md) and the patterns in [patterns/dashboards.md](../../patterns/dashboards.md).
+
 Dual-artifact system: Editor mode for creating, Published mode for sharing.
 
 ## Architecture
@@ -10,7 +12,7 @@ Every dashboard has two URLs:
 ┌────────────────────────────────────────────────────────────────┐
 │                                                                │
 │   EDITOR                              PUBLISHED                │
-│   shareout.site/a/{slug}             shareout.site/p/{slug}   │
+│   $ORIGIN_HOST/a/{slug}             $ORIGIN_HOST/p/{slug}   │
 │                                                                │
 │   ┌──────────────────┐               ┌──────────────────┐     │
 │   │                  │   real-time   │                  │     │
@@ -34,8 +36,8 @@ const result = await sdk.dashboards.create({
   visibility: 'public'
 });
 
-console.log(result.editorUrl);      // shareout.site/a/sales-dashboard
-console.log(result.publishedUrl);   // shareout.site/p/sales-dashboard
+console.log(result.editorUrl);      // $ORIGIN_HOST/a/sales-dashboard
+console.log(result.publishedUrl);   // $ORIGIN_HOST/p/sales-dashboard
 ```
 
 ### Response
@@ -43,8 +45,8 @@ console.log(result.publishedUrl);   // shareout.site/p/sales-dashboard
 ```typescript
 interface CreateResult {
   id: string;                    // Dashboard ID
-  editorUrl: string;             // shareout.site/a/{slug}
-  publishedUrl: string;          // shareout.site/p/{slug}
+  editorUrl: string;             // $ORIGIN_HOST/a/{slug}
+  publishedUrl: string;          // $ORIGIN_HOST/p/{slug}
   editorArtifactId: string;      // Editor artifact ID
   publishedArtifactId: string;   // Published artifact ID
 }
@@ -219,15 +221,15 @@ dashboard.publish.republish();
 ### Standard URLs
 
 ```
-shareout.site/a/{slug}     → Editor
-shareout.site/p/{slug}     → Published
+$ORIGIN_HOST/a/{slug}     → Editor
+$ORIGIN_HOST/p/{slug}     → Published
 ```
 
 ### Teams Subdomains
 
 ```
-{workspace}.shareout.site/a/{slug}   → Editor
-{workspace}.shareout.site/p/{slug}   → Published
+{workspace}.example.com/a/{slug}   → Editor
+{workspace}.example.com/p/{slug}   → Published
 ```
 
 ### Embed URLs
@@ -235,13 +237,13 @@ shareout.site/p/{slug}     → Published
 Embed artifacts in external websites via iframe:
 
 ```
-shareout.site/embed/{slug}   → Embeddable iframe
+$ORIGIN_HOST/embed/{slug}   → Embeddable iframe
 ```
 
 **Usage:**
 ```html
 <iframe
-  src="https://shareout.site/embed/my-dashboard/"
+  src="$ORIGIN/embed/my-dashboard/"
   width="100%"
   height="600"
   frameborder="0"
@@ -277,7 +279,7 @@ await fetch('/v1/artifacts/{id}', {
 
 ```javascript
 const url = dashboard.publish.getUrl();
-// 'https://shareout.site/p/sales-dashboard'
+// '$ORIGIN/p/sales-dashboard'
 
 // Copy to clipboard
 await navigator.clipboard.writeText(url);
@@ -340,7 +342,7 @@ Add Open Graph tags to the dashboard HTML `<head>`. ShareOut extracts them on pu
   <meta name="description" content="Real-time sales metrics and analytics...">
   <meta property="og:title" content="Sales Dashboard">
   <meta property="og:description" content="Real-time sales metrics and analytics...">
-  <meta property="og:image" content="https://shareout.site/t/art_abc123.webp">
+  <meta property="og:image" content="$ORIGIN/t/art_abc123.webp">
   <meta name="twitter:card" content="summary_large_image">
 </head>
 ```

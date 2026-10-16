@@ -2,17 +2,29 @@
 
 ## Overview
 
-ShareOut uses token-based authentication for all API operations. This is a fully headless system - no email required, no OAuth flows for the SDK user. Claude handles all authentication seamlessly.
+Every API call is authenticated with a bearer key (`Authorization: Bearer so_…`). How the
+agent gets that key depends on where it runs — pick the first row that fits:
 
-## How It Works
+| Agent runs in | Connect with | Notes |
+|---------------|--------------|-------|
+| claude.ai, Claude Desktop, ChatGPT | **The ShareOut connector** — add `$ORIGIN/mcp` as a custom connector | The user signs in once in the browser; no key is ever shown in chat. Recommended |
+| Claude Code, a CLI, scripts | **Device login** ([below](#log-in-with-google-device-login)) or a **personal key** from `$ORIGIN/home?view=connect` | Save it to `~/.shareout/credentials` (`chmod 600`) |
+| ChatGPT Custom GPT (Actions) | Import `$ORIGIN/openapi.agent.json`, auth type *API key → Bearer*, paste a personal key into the GPT's settings | Keys go in the Action settings, never in the conversation |
+| No account and none wanted | `POST /v1/auth/create-account` (anonymous, if the instance allows it) | Anonymous accounts publish **privately** until an email is linked |
+
+Rules for the agent: never paste a key or `device_code` back to the user, never ask them to
+paste one into chat when a connector or device login works, and when a call returns `401`
+read its `reason` and `hint` ([api/errors.md](api/errors.md)) instead of retrying.
+
+## How It Works (CLI / script)
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                    First-Time Setup                         │
 ├─────────────────────────────────────────────────────────────┤
-│  1. Claude calls POST /v1/auth/create-account               │
-│  2. Server creates user + returns token (so_xxx...)         │
-│  3. Claude stores token in ~/.shareout/credentials          │
+│  1. Device login (or the user copies a personal key)        │
+│  2. Server returns a token (so_xxx...)                      │
+│  3. Agent stores it in ~/.shareout/credentials              │
 │  4. All future requests use: Authorization: Bearer so_xxx   │
 └─────────────────────────────────────────────────────────────┘
 ```
@@ -74,7 +86,7 @@ No auth. Body `{ "device_code" }`.
 
 - Pending → `200 { "status": "pending", "interval": 5 }`
 - Approved → `200 { "status": "approved", "token": "so_…", "user_id": "usr_…", "warn"? }`
-- Expired / denied / unknown → `400 { "error": "expired_token" | "access_denied" | "invalid_grant" }`
+- Expired / denied / unknown → `400 { "error": "expired_token" | "access_denied" | "invalid_grant", "code", "hint" }` — `error` keeps the RFC 8628 value for device-flow clients; `code` (`DEVICE_CODE_EXPIRED` / `DEVICE_LOGIN_DENIED` / `DEVICE_CODE_UNKNOWN`) and `hint` say what to do (usually: start a new login). See [api/errors.md](api/errors.md#auth-errors).
 
 ## API Endpoints
 
@@ -95,7 +107,14 @@ Content-Type: application/json
 }
 ```
 
-This is the only unauthenticated endpoint. All others require the Bearer token.
+No auth required. Returns `403 SIGNUPS_PAUSED` when the instance has closed sign-ups —
+then use device login (existing or invited users) or ask the instance admin for an invite.
+An anonymous account has no email, so everything it publishes is **private** (the publish
+response says `visibility_downgraded: true`) until an email is linked.
+
+Unauthenticated endpoints: this one, device login (`/v1/auth/device/start`,
+`/v1/auth/device/token`), email one-time codes, public artifact pages, and discovery files
+(`/openapi.json`, `/openapi.agent.json`, `/v1/skill`). Everything else requires the Bearer token.
 
 ---
 
@@ -139,6 +158,7 @@ Content-Type: application/json
 ```
 
 - Omit `regenerate` (or set `false`) to **add** a token alongside existing ones.
+- `name` (optional, up to 100 chars) labels the token in `GET /v1/me/tokens` — e.g. `{ "name": "CI deploy" }`; defaults to `self-serve`.
 - Set `"regenerate": true` to revoke all existing tokens first, then mint exactly one new token.
 - Session cookies (`credentials: 'include'`) work instead of Bearer for browser calls from the home UI.
 
@@ -285,29 +305,37 @@ X-RateLimit-Reset: 1705420800
 
 ```json
 {
-  "error": "Rate limit exceeded",
+  "success": false,
+  "error": "Daily publish limit reached (100 per day). It resets at 14:00 UTC, in about 3 hours.",
   "code": "RATE_LIMIT_EXCEEDED",
+  "limit": 100,
   "remaining": 0,
-  "reset": 1705420800
+  "reset": 1705420800,
+  "retryAfter": 10800,
+  "request_id": "8a1f2c3d4e5f6a7b"
 }
 ```
+
+Plus `Retry-After`, `X-RateLimit-Remaining` and `X-RateLimit-Reset` headers. Wait for the
+reset — don't loop. (Data-plane routes use `RATE_LIMITED` instead; see [api/errors.md](api/errors.md).)
 
 ---
 
 ## Token Lifecycle
 
 ### Creation
-- Created via `/v1/auth/create-account`
-- One token per account by default (named "default")
+- Device login, the connect page (`$ORIGIN/home?view=connect`), `POST /v1/me/tokens`, or
+  anonymous `/v1/auth/create-account`
+- An account can hold several tokens (one per agent or machine)
 
 ### Usage Tracking
 - `last_used_at` updated on each API call
 - Helps identify inactive tokens
 
-### Expiration
-- Optional `expires_at` field
-- Tokens without expiration never expire
-- Expired tokens return `401 Unauthorized`
+### Expiration and revocation
+- Optional `expires_at` field; tokens without one never expire
+- A dead key returns `401 UNAUTHORIZED` with `reason: "expired"` or `"revoked"` (unknown keys:
+  `"invalid"`, no header: `"missing"`) plus a `hint` on how to get a new one
 
 ---
 
@@ -320,7 +348,7 @@ Artifacts have role-based access control:
 | Role | Permissions |
 |------|-------------|
 | **owner** | Full control: view, edit, publish, manage collaborators, delete, transfer ownership |
-| **editor** | Edit metadata, publish new versions, rollback, add/remove editors and viewers |
+| **editor** | Edit metadata, publish new versions, restore versions, add/remove editors and viewers |
 | **viewer** | View private artifacts only |
 
 ### What's Protected by Role
@@ -336,7 +364,8 @@ Artifacts have role-based access control:
 | `DELETE /v1/artifacts/:id/collaborators/:email` | ✓ | ✓ | ✗ |
 | `POST /v1/artifacts/:id/transfer-ownership` | ✓ | ✗ | ✗ |
 | `GET /v1/artifacts/:id/versions` | ✓ | ✓ | ✓ |
-| `POST /v1/artifacts/:id/rollback` | ✓ | ✓ | ✗ |
+| `POST /v1/artifacts/:id/versions/:no/restore` | ✓ | ✓ | ✗ |
+| `POST /v1/artifacts/:id/rollback` (deprecated) | ✓ | ✓ | ✗ |
 
 ### What's Not Protected
 
@@ -407,6 +436,11 @@ Use email OTP when viewers cannot or prefer not to use Google OAuth. For program
 - Username/password pairs
 - Multiple users with different credentials
 
+Password and credentials are an **alternative** way in for people with no ShareOut
+account, not a second factor on top of a share. The owner and any named collaborator
+who is signed in go straight through, and adding a collaborator no longer rewrites the
+gate — an artifact published with `password` keeps it.
+
 These are for artifact **viewers**, not artifact **owners**.
 
 ---
@@ -415,7 +449,8 @@ These are for artifact **viewers**, not artifact **owners**.
 
 | Code | Status | Description |
 |------|--------|-------------|
-| `UNAUTHORIZED` | 401 | Missing or invalid token |
+| `UNAUTHORIZED` | 401 | No usable token — `reason`: `missing` / `invalid` / `revoked` / `expired` |
+| `SIGNUPS_PAUSED` | 403 | Anonymous account creation is closed on this instance |
 | `FORBIDDEN` | 403 | Token valid but no permission |
 | `NOT_FOUND` | 404 | Resource not found |
 | `INVALID_JSON` | 400 | Malformed JSON body |
@@ -432,7 +467,7 @@ These are for artifact **viewers**, not artifact **owners**.
 
 ```typescript
 // Initialize client
-const shareout = new ShareOut();
+const shareout = await ShareOut.create();
 
 // Check for existing credentials
 const hasCredentials = await shareout.hasCredentials();
@@ -497,16 +532,21 @@ CREATE TABLE rate_limits (
 ## FAQ
 
 **Q: Can I have multiple tokens?**
-A: The schema supports it, but currently one token per user is created.
+A: Yes. `POST /v1/me/tokens` (or the connect page) adds one; keep one per agent or machine.
 
 **Q: What if I lose my token?**
-A: Create a new account. If email was linked, contact support.
+A: Don't create a new account — that strands the user's pages in an empty one. Sign in again
+with device login, or have the user open `$ORIGIN/home?view=connect` and make a new key. An
+anonymous account with no linked email can't be recovered; if the user is stuck, file a
+ticket ([api/support.md](api/support.md)).
 
 **Q: Is email required?**
-A: No. Email is optional and only used for account recovery.
+A: Not to sign up anonymously, but publishing **public** pages needs a verified email, and
+it is how a lost key gets recovered.
 
 **Q: Can tokens be revoked?**
-A: Delete from the `tokens` table or wait for expiration.
+A: Yes — `POST /v1/me/tokens` with `{ "regenerate": true }` revokes every existing token and
+mints one new one. A revoked token returns `401` with `reason: "revoked"`.
 
 **Q: How do I authenticate in CI/CD?**
 A: Use `SHAREOUT_TOKEN` environment variable.

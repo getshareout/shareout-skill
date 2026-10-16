@@ -53,7 +53,7 @@ react(id: string, emoji: string): Promise<ReactionResult>
 
 List, reply and single-comment responses include a `reactions` summary scoped to
 the viewer: `{ "👍": { count: 2, mine: true } }`. Reaction changes broadcast over
-the real-time channel as a `comment:reaction` event.
+the real-time channel as a `comment:reaction` event. Over REST, `POST /v1/data/{id}/comments/{commentId}/reactions {"emoji":"👍"}` accepts a session cookie or a Bearer API token (the token's user is the reactor; a token user is also the comment author on create).
 
 ## Query Builder
 
@@ -103,7 +103,10 @@ consumes these for live presence ("N others here") and typing indicators.
 
 **Notifications:** when a comment @mentions someone or replies to another
 person, that recipient is notified by email and (if linked) Telegram with a deep
-link back to the conversation — including comments left by AI agents.
+link back to the conversation — including comments left by AI agents. Mentions
+only reach people already on the artifact (owner, workspace members,
+collaborators — what `/_people` returns); an address outside that set is stored
+and rendered but never mailed.
 
 ## Action items
 
@@ -131,7 +134,7 @@ Content-Type: application/json
 
 Clear the assignment by passing `"assignee": null` (also clears `dueAt`).
 
-**Auth:** session required. Permitted callers: comment author, artifact owner, or current assignee.
+**Auth:** signed-in user (session cookie or Bearer API token). Permitted callers: comment author, artifact owner, current assignee, or anyone with **comment access** — an owner or collaborator (across linked accounts), an internal member of the artifact's workspace when it is workspace- or public-visible, or a `comment` grant. A view-only grant or a signed-in stranger on a public page does not qualify.
 
 **Errors:** `400 ASSIGNEE_NOT_FOUND` — email is not a workspace member or collaborator.
 
@@ -142,7 +145,17 @@ GET /v1/data/{artifactId}/comments?assignee=me
 GET /v1/data/{artifactId}/comments?assignee=alice@example.com
 ```
 
-**Resolve:** the assignee (in addition to author/owner) may resolve the comment.
+**Resolve / reopen:**
+
+```http
+PATCH /v1/data/{artifactId}/comments/{commentId}/resolve
+Authorization: Bearer {token}
+Content-Type: application/json
+
+{ "resolved": true }
+```
+
+`"resolved": false` reopens. Same callers as assign. The response is the updated comment (`resolved`, `resolvedBy`, `resolvedAt`).
 
 **Activity feed:** `GET /v1/home/activity-feed` response includes:
 - `actionItems[]` — comments assigned to the signed-in user that are still open.
@@ -159,6 +172,29 @@ GET /v1/data/{artifactId}/comments?assignee=alice@example.com
 | `assigneeUserId` | `string \| null` | Internal user ID of the assignee |
 | `assigneeEmail` | `string \| null` | Email of the assignee |
 | `dueAt` | `string \| null` | ISO 8601 due datetime |
+
+## Review mode
+
+Home **Inspector → Comments** filters Open/All, resolves/reopens and assigns threads (anyone with comment access, as above). Each comment stores `versionId`, the version live when it was written (null on older comments), so a thread left on an older version shows "on vN". **History** shows each version's comment count and approvals.
+
+Approve a version — a record shown in Details and History, not a publish gate:
+
+```http
+POST /v1/home/approvals
+Authorization: Bearer {token}
+Content-Type: application/json
+
+{ "artifactId": "art_…", "versionId": "ver_…", "approved": true }
+```
+
+`versionId` defaults to the live version; `"approved": false` withdraws your approval. `GET /v1/home/review?artifactId=…` returns `{live_version_id, live_version_no, can_review, approvals, my_approvals}`. Needs comment access (`403 FORBIDDEN` otherwise). The MCP connector exposes the same actions ([integrations/mcp-connector.md](../integrations/mcp-connector.md)).
+
+## Ask the AI from a comment
+
+A comment containing `@AI` (or `@IA` / `@ShareOut`) by the artifact's owner or an editor
+runs the page editor: it publishes a new version and replies in the same thread with
+what changed. Others get a reply saying edit access is needed. Counts against the daily
+publish limit and storage quota. Not for file comments.
 
 ## Examples
 
@@ -216,12 +252,15 @@ interface Comment {
   createdAt: string;
   updatedAt: string;
   resolved?: boolean;
+  resolvedBy?: string | null;
+  resolvedAt?: string | null;
   mentions?: string[];
   authorType?: 'human' | 'agent';
   reactions?: Record<string, { count: number; mine: boolean }>;
   assigneeUserId?: string | null;
   assigneeEmail?: string | null;
   dueAt?: string | null;
+  versionId?: string | null;
 }
 
 interface ReactionResult {
@@ -239,4 +278,4 @@ interface CommentThread {
 
 ## Related
 
-- [REST API: Comments](../api/overview.md) - REST endpoints
+- [REST API overview](../api/overview.md) — auth and base URLs; the comment routes above are `/v1/data/{artifactId}/comments/*`

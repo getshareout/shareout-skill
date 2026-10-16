@@ -12,6 +12,7 @@ External service connections via Data Platform and **Teams workspace connectors*
 | Google Analytics | [google-analytics.md](google-analytics.md) | GA4 reports and metrics |
 | Google Ads | [google-ads.md](google-ads.md) | Campaign spend/clicks via pasted OAuth credentials |
 | Facebook Ads | [facebook-ads.md](facebook-ads.md) | Meta Marketing API via pasted access token |
+| Amazon S3 · Supabase · Amazon Redshift · Amazon Aurora | [databases-and-storage.md](databases-and-storage.md) | Bucket files + read-only SQL over HTTPS (IAM key / Supabase token) |
 | Shopify | [shopify.md](shopify.md) | Products, orders, inventory |
 | Tienda Nube | [tiendanube.md](tiendanube.md) | LATAM e-commerce |
 | GitHub | [github.md](github.md) | Backup and export |
@@ -19,11 +20,11 @@ External service connections via Data Platform and **Teams workspace connectors*
 
 ## Connection Pattern
 
-> **Browser artifacts:** There is no `sdk.platform` in the shipped SDK bundle. To query
-> platform connections (BigQuery, GA, Shopify, …) from published HTML, use
-> `sdk._internalFetch('/platform/…')` as documented in [../sdk/live-data.md](../sdk/live-data.md).
-> The patterns below apply to **owner setup** (REST admin / future platform store), not
-> artifact runtime.
+> **Browser artifacts:** `sdk.platform` **does** exist in the shipped SDK bundle
+> (`sdk/src/core/shareout.ts` → `get platform(): PlatformStore`) and is the **preferred**
+> way to query platform connections (BigQuery, GA, Shopify, …) from published HTML —
+> prefer it over raw `sdk._internalFetch('/platform/…')`, which it replaces. See
+> [../sdk/live-data.md](../sdk/live-data.md) for the full store reference.
 
 All integrations follow the same pattern:
 
@@ -31,11 +32,12 @@ All integrations follow the same pattern:
 const sdk = await ShareOut.create();
 
 // Artifact runtime — list + execute (owner session required):
-const { connections } = await sdk._internalFetch('/platform/connections');
-const result = await sdk._internalFetch('/platform/bigquery/jobs.query/execute', {
-  method: 'POST',
-  body: JSON.stringify({ connectionId, params: { /* provider-specific */ } }),
+const connections = await sdk.platform.connections();
+const result = await sdk.platform.provider('bigquery').execute('jobs.query', {
+  connectionId: connections[0].id,
+  params: { body: { query: 'SELECT 1', useLegacySql: false, maxResults: 1000 } },
 });
+// Shortcut form: sdk.platform.execute('bigquery', 'jobs.query', { connectionId, params })
 ```
 
 For OAuth setup and workspace admin APIs, see each provider doc and [../api/overview.md](../api/overview.md).

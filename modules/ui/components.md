@@ -3,8 +3,8 @@
 Behavior for interactive components. Load both the stylesheet and the script:
 
 ```html
-<link rel="stylesheet" href="https://shareout.site/sdk/shareout.css">
-<script src="https://shareout.site/sdk/shareout-ui.js" defer></script>
+<link rel="stylesheet" href="/sdk/shareout.css">
+<script src="/sdk/shareout-ui.js" defer></script>
 ```
 
 Everything is on `window.ShareOutUI`. No build step, no dependencies. Tabs and dropdowns (using the markup in [classes.md](classes.md)) auto-initialize on load.
@@ -33,7 +33,7 @@ ShareOutUI.closeModal();   // also closes on backdrop click or Escape
 ## Copy to clipboard
 
 ```js
-const ok = await ShareOutUI.copy('https://shareout.site/a/my-page');
+const ok = await ShareOutUI.copy('$ORIGIN/a/my-page');
 if (ok) ShareOutUI.toast('Link copied');
 ```
 

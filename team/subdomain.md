@@ -2,7 +2,7 @@
 
 Workspaces can use `{workspace}.{your-apex}` as a branded home for workspace artifacts.
 On self-host, apex is your `SHAREOUT_BASE_URL` host (see [../deploy/cloudflare.md](../deploy/cloudflare.md)).
-Hosted example apex: `shareout.site`.
+Hosted example apex: `$ORIGIN_HOST`.
 
 Load [SKILL.md](SKILL.md) first.
 

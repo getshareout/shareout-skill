@@ -1,5 +1,7 @@
 # SDK.dashboards API Reference
 
+> **Not available — design spec only.** The `sdk.dashboards.*` module has no backend: `/v1/data/{artifactId}/dashboards` returns 404 on every deployment. Do not build on it. For a dashboard with data, use [`sdk.table`](../../sdk/table.md) / [`sdk.json`](../../sdk/json.md) and the patterns in [patterns/dashboards.md](../../patterns/dashboards.md).
+
 Complete API documentation for the ShareOut Dashboards namespace.
 
 ## Namespace Structure
@@ -45,8 +47,8 @@ interface CreateOptions {
 
 interface CreateResult {
   id: string;
-  editorUrl: string;              // shareout.site/a/{slug}
-  publishedUrl: string;           // shareout.site/p/{slug}
+  editorUrl: string;              // $ORIGIN_HOST/a/{slug}
+  publishedUrl: string;           // $ORIGIN_HOST/p/{slug}
   editorArtifactId: string;
   publishedArtifactId: string;
 }
@@ -61,8 +63,8 @@ const result = await sdk.dashboards.create({
   visibility: 'public'
 });
 
-console.log(result.editorUrl);    // shareout.site/a/sales-dashboard
-console.log(result.publishedUrl); // shareout.site/p/sales-dashboard
+console.log(result.editorUrl);    // $ORIGIN_HOST/a/sales-dashboard
+console.log(result.publishedUrl); // $ORIGIN_HOST/p/sales-dashboard
 ```
 
 ### sdk.dashboards.open()
@@ -912,7 +914,7 @@ Publishing controls.
 ### publish.getUrl()
 
 ```typescript
-getUrl(): string  // shareout.site/p/{slug}
+getUrl(): string  // $ORIGIN_HOST/p/{slug}
 ```
 
 ### publish.setVisibility()

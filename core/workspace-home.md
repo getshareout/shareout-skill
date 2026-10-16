@@ -22,14 +22,14 @@ On **Home**, the canvas shows your **Brief** as draggable widgets and the right 
 | Widget | What it shows |
 | --- | --- |
 | **Recently viewed** | Pages you opened lately |
-| **Needs you** | Actionable rows (comments, action items assigned to you, shares, access requests, alerts, failed runs, files emailed to the workspace inbox, **stale Sheets data**, **metric watches**, **unused-page cleanup**) |
+| **Needs you** | Actionable rows (comments, **@mentions of you**, action items assigned to you, shares, access requests, alerts, failed runs, files emailed to the workspace inbox, **stale Sheets data**, **metric watches**, **unused-page cleanup**) |
 | **Runs** | Recent schedule and crew executions |
 | **Activity** | Live Pulse counts (publishes, views, creates, favorites, connections, skills…) |
 | **For you** | Personalized recommendations |
 
 Drag the grip on any widget to **reorder**; resize from the corner handle. Layout is saved in your browser.
 
-- **Needs You** — individual rows that need action: unresolved comments or replies (not yours), **action items** assigned to you, shares to you, access requests, metric alerts, failed tests, failed job or crew runs, **files emailed to the workspace inbox**, **Google Sheets connections that stopped syncing**, **metric watches that moved sharply**, **monthly unused-page cleanup suggestions**
+- **Needs You** — individual rows that need action: unresolved comments or replies (not yours), **@mentions of you** (their own kind, defaulting to `self` audience so they survive a workspace turning the general comment stream down), **action items** assigned to you, shares to you, access requests, metric alerts, failed tests, failed job or crew runs, **files emailed to the workspace inbox**, **Google Sheets connections that stopped syncing**, **metric watches that moved sharply**, **monthly unused-page cleanup suggestions**
 - **Pulse** — aggregated ambient counts inside the Activity widget. Pick **Today**, **7 days**, or **30 days**
 
 Workspace owners and admins can tune who sees each event kind under **Activity → settings**. See [../team/activity-feed.md](../team/activity-feed.md).
@@ -71,7 +71,7 @@ Beyond Brief, the left rail opens full-page lenses inside Home — no separate a
 | Lens | Who | What you do there |
 | --- | --- | --- |
 | **Assets** | Workspace members (personal scope on Personal home) | Upload files, folders, per-file visibility, versions, comments, **Share with a person**, bundle collections, gated `/d/<token>` download links — see [../team/assets.md](../team/assets.md) |
-| **Knowledge** | Workspace members (paid plan to enable) | Opt-in learned library — tree/table browse, Guidance (house rules), nightly consolidator — see [../team/knowledge.md](../team/knowledge.md) |
+| **Knowledge** | Workspace members (owner/admin to enable) | Opt-in learned library — tree/table browse, Guidance (house rules), nightly consolidator — see [../team/knowledge.md](../team/knowledge.md) |
 | **Catalog** | Everyone | Browse the optional [data catalog](../team/catalog.md) — sources, events, lineage, glossary |
 | **Datasets** | Workspace members | Browse and create workspace datasets |
 | **Crew AI** | Owners/admins | Manage crew automations |
@@ -83,7 +83,7 @@ Each lens has native create flows — you stay in Home instead of handing off to
 
 ## All Artifacts — folder drill-in
 
-The **All Artifacts** lens lists pages with filter chips (Recent, Favorites, Shared with me, Mine). A **Folders** row at the top shows Team Space or personal folders; click a folder to drill in (Drive-style breadcrumb **All › {folder}**). Create, rename, or delete folders from the same view (owners/admins for Team Space; owners for personal). Deleting a folder unfiles its pages — it does not delete artifacts.
+The **All Artifacts** lens lists pages with filter chips (Recent, Favorites, Shared with me, Mine). A **Folders** row at the top shows Team Space or personal folders; click a folder to drill in (Drive-style breadcrumb **All › {folder}**). Create, rename, or delete folders from the same view (Team Space: owners/admins for any folder, members for the ones they created unless an admin turned that off; owners for personal). Deleting a folder unfiles its pages — it does not delete artifacts.
 
 ## Open pages in tabs
 
@@ -175,7 +175,7 @@ At the bottom of the canvas, **Ask your workspace…** is a two-state composer:
 
 Tap the pill (or focus the composer) to open the sheet. **Minimize**, click the scrim, or press **Escape** to return to resting. Drag the **top grip** to resize the sheet height (280px up to nearly full viewport); **double-click the grip** toggles full height ↔ default. Height persists per browser (`localStorage` key `wsx_sheet_h`). On first open the sheet defaults to a compact height — `min(480px, 52vh)` — so the workspace stays visible behind it.
 
-The chat uses **named threads** — multiple conversations, inline confirmation cards, and (on Home) canvas tools to search and open artifacts. It can orient you, run read-only connector queries when enabled, propose schedules, and stream artifact builds after confirmation. Same guardrails as the [workspace assistant](../team/workspace-assistant.md).
+The chat uses **named threads** — multiple conversations, inline confirmation cards, and (on Home) canvas tools to search and open artifacts. It can orient you, run read-only connector queries when enabled, propose schedules, and stream artifact builds after confirmation (a page built from the chat is published **private**, in the workspace you are chatting in — share it afterwards). Same guardrails as the [workspace assistant](../team/workspace-assistant.md).
 
 Tap the **microphone** in the composer to dictate a message — audio is transcribed into the text box before you send (see [workspace assistant → Voice input](../team/workspace-assistant.md#voice-input)).
 
@@ -196,7 +196,7 @@ See [../team/workspace-assistant.md](../team/workspace-assistant.md#setup-checkl
 
 ## Localization
 
-The Home studio shell (rails, lenses, Admin, chat composer, onboarding copy) ships in **English and Spanish** — strings follow the browser locale (`en` / `es`). Artifact content and agent replies are not auto-translated.
+The Home studio shell (rails, lenses, Admin, chat composer, onboarding copy) ships in **English and Spanish** — strings follow the browser locale (`en` / `es`). Artifact content is not auto-translated. Any agent talking to the user — including you — answers in the language the user writes in (Spanish for Argentina uses *vos*); see [../SKILL.md § Talk to the user](../SKILL.md#talk-to-the-user).
 
 ## Account menu
 

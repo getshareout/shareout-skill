@@ -76,9 +76,9 @@ Production requires:
 - Workspace Slack connection (OAuth bot token with `im:history`, `im:write`, `users:read.email`, `commands`, etc.)
 - `SLACK_SIGNING_SECRET` worker secret
 - Slack app manifest endpoints:
-  - Events: `https://shareout.site/slack/events` (`message.im`)
-  - Slash command: `https://shareout.site/slack/commands` (`/shareout`)
-  - Interactivity: `https://shareout.site/slack/interactions`
+  - Events: `$ORIGIN/slack/events` (`message.im`)
+  - Slash command: `$ORIGIN/slack/commands` (`/shareout`)
+  - Interactivity: `$ORIGIN/slack/interactions`
 - D1 migrations `0074_messaging_links`, `0075_messaging_links_connection`
 
 Webhook handlers return HTTP 200 quickly; turns serialize per DM in `ChatSessionDO` with deduplicated event ids.

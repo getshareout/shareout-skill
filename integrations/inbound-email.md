@@ -20,8 +20,11 @@ Cloudflare Email Routing  →  Worker email() handler
 event-triggered jobs run (webhook, telegram, slack, email, crew, …)
 ```
 
-- **Address:** `<prefix>@inbox.shareout.site`, where `<prefix>` is auto-generated
-  from the artifact slug. Plus-addressing works: `expensas+enero@inbox.shareout.site`
+- **Address:** `<prefix>@inbox.<instance-host>`, where `<prefix>` is auto-generated
+  from the artifact slug. The inbox domain is instance-specific: `inbox.` + the
+  instance hostname (on shareout.site: `expensas@inbox.shareout.site`), or the
+  operator's `EMAIL_INBOX_DOMAIN` override. Don't guess it — read `status.address`
+  from `sdk.inbox.enable()`. Plus-addressing works: `expensas+enero@inbox.shareout.site`
   delivers to the same inbox with `tag = "enero"`.
 - **Opt-in:** receiving is OFF until enabled. It turns on automatically when you
   create the first `email.received` trigger, or explicitly via `sdk.inbox.enable()`.
@@ -51,8 +54,9 @@ Create an event-triggered job with `event_type: "email.received"`. The inbound
 message is passed to the destination so templates can interpolate it:
 
 ```json
-POST /v1/data/{artifactId}/scheduling/jobs
+POST /v1/jobs
 {
+  "artifact_id": "{artifactId}",
   "action": "telegram",
   "trigger_type": "event",
   "event_type": "email.received",
@@ -86,6 +90,6 @@ POST /v1/data/{artifactId}/scheduling/jobs
   trigger once.
 - Deleting the artifact deletes its inbox and all stored messages/attachments.
 
-> Inbound (`inbox.shareout.site`) is separate from outbound sending
-> (`<prefix>@shareout.site`, see [overview.md](overview.md) and the email SDK). The
+> Inbound (`inbox.<instance-host>`) is separate from outbound sending
+> (`<prefix>@$ORIGIN_HOST`, see [overview.md](overview.md) and the email SDK). The
 > two share the artifact's prefix but are independent systems on different domains.

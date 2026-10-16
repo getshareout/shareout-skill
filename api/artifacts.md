@@ -26,9 +26,12 @@ Create or update an artifact.
     "name": "My App",
     "short_name": "App",
     "icon": "data:image/png;base64,..."
-  }
+  },
+  "message": "Added the Q3 revenue chart"
 }
 ```
+
+`message` (optional, max 500 chars) is the change note for this version, shown in the History tab. Send one when you update an existing artifact. Without one, a short "what changed" line is generated in the background from the diff against the previous version and stored with `message_source: "ai"`. Workspaces can turn that off with the `ai.version_summaries` feature.
 
 **Response:**
 ```json
@@ -37,11 +40,11 @@ Create or update an artifact.
   "version": { "id": "ver_xyz789", "version_no": 1 },
   "deployment": {
     "slug": "my-app",
-    "url": "https://shareout.site/a/my-app/",
-    "mobile_url": "https://shareout.site/a/my-app/?v=mobile"
+    "url": "$ORIGIN/a/my-app/",
+    "mobile_url": "$ORIGIN/a/my-app/?v=mobile"
   },
   "pwa": {
-    "manifest_url": "https://shareout.site/a/my-app/manifest.json",
+    "manifest_url": "$ORIGIN/a/my-app/manifest.json",
     "installable": true
   },
   "editor_readiness": {
@@ -72,13 +75,26 @@ Create or update an artifact.
   "moderation": {
     "status": "pending",
     "reason": "unknown domain example.com",
-    "message": "Public pages get an automated safety check at publish. This one is held private for now — it is re-checked automatically within the hour (our team is alerted too) and goes public by itself once it clears.",
+    "message": "Public pages get an automated safety check at publish. This one is held private for now — it is re-checked automatically within the hour and goes public by itself once it clears. If it stays held, open a support ticket from Help & support in the app (or POST /v1/support/tickets).",
     "requested_visibility": "public"
   }
 }
 ```
 
 When `moderation.status === "pending"`, tell the user their page is **under an automated safety review** — it usually clears within the hour and **goes public automatically**, no action needed. Do **not** present the URL as live/public yet; share it as "publishing shortly" or offer the private link. When `status === "blocked"`, the page stays private and needs support. Absent means the page published at the requested visibility.
+
+**Visibility downgrade** (`visibility`, `visibility_downgraded`, `requested_visibility`, `notice`): the response always carries the page's real `visibility`. When it came out more private than asked, `visibility_downgraded` is `true`, `requested_visibility` is `"public"`, and `notice` says why in plain words. Causes besides a moderation hold: the instance turned public links off (`OPEN_VISIBILITY_DISABLED`), the account has **no verified email** (anonymous `create-account` accounts always publish privately until an email is linked), or the public-artifact cap is reached. A publish with **no** `visibility` (and no `private` / `password` / `share_with`) asks for public, so it is reported the same way:
+
+```json
+{
+  "visibility": "private",
+  "visibility_downgraded": true,
+  "requested_visibility": "public",
+  "notice": "Public links are turned off on this instance (OPEN_VISIBILITY_DISABLED)."
+}
+```
+
+Tell the user the page is private and why; don't call the link public and don't re-publish to "fix" it.
 
 **Editor-readiness** (`editor_readiness`, HTML artifacts only): an **advisory** profile of how much the visual editor can do with this artifact, computed from the same rules the editor runs in the browser. It **never blocks publishing** — the artifact is live regardless. The more structural markers it carries (manifest, `data-shareout-page`, declared bindings, templates), the more the editor can offer (outline navigation, inline editing, add/remove items). Each finding's `disables` says which editor feature that gap costs. Surface a short summary to the user after publishing (e.g. "Published ✅ — editor-ready, 1 advisory warning"), so they know what they'd gain by adding the missing markers, but don't treat it as an error. Absent for non-HTML artifacts. See [core/html-spec/overview.md](../core/html-spec/overview.md).
 
@@ -88,9 +104,9 @@ When `moderation.status === "pending"`, tell the user their page is **under an a
 |-------|------|----------|-------------|
 | `name` | string | Yes | Display name |
 | `slug` | string | No | Human-facing slug (auto-generated from `name` if omitted). Unique **per workspace** (or per owner for personal artifacts). Drives subdomain/namespaced URLs and publish dedup. |
-| `entrypoint` | string | No | Default: `index.html` |
+| `entrypoint` | string | No | Default: `index.html`, or the only file's path when `files` has a single file (e.g. a lone `data.csv`). Must name a path in `files` |
 | `files` | FileEntry[] | Yes | Files to publish |
-| `visibility` | string | No | `private` (default; owner + explicitly shared), `workspace` (all members of the artifact's workspace), `public` (anyone on the internet with the link; discoverable). (`unlisted` is a retired legacy alias, still accepted and treated as `public`.) |
+| `visibility` | string | No | Omitted → `public` when the instance and account allow it, otherwise `private` with `visibility_downgraded` (see above). `private` (owner + explicitly shared), `workspace` (all members of the artifact's workspace), `public` (anyone on the internet with the link; discoverable). (`unlisted` is a retired legacy alias, still accepted and treated as `public`.) |
 | `mobile_html` | string | No | Mobile-specific HTML |
 | `pwa` | PWAConfig | No | PWA configuration |
 | `access_policy` | object | No | Row-level access policy (per-viewer data filtering) |
@@ -102,12 +118,35 @@ When `moderation.status === "pending"`, tell the user their page is **under an a
 |-------|------|-------------|
 | `enabled` | boolean | Turn the agent on/off (default `true` when the block is present) |
 | `systemPrompt` | string | Visitor system prompt |
-| `model` | string | e.g. `claude-sonnet-4-20250514` |
+| `model` | string | e.g. `claude-sonnet-5` |
 | `maxTokens` / `temperature` | number | Generation settings |
 | `contextJson` | boolean | Include `sdk.json` in context (default `true`) |
 | `contextTables` | string[] | Table names to auto-include in context |
 
 See [agents/overview.md](../agents/overview.md) for the full agent guide and the live-data `chat({ context })` pattern.
+
+### Multi-page sites (several HTML files)
+
+Ship each page as its own file in `files[]` and keep `entrypoint` on the home page:
+
+```json
+{
+  "name": "Acme ops manual",
+  "entrypoint": "index.html",
+  "files": [
+    { "path": "index.html", "content": "<a href=\"procedures/intake.html\">Intake</a>…", "mime": "text/html" },
+    { "path": "procedures/intake.html", "content": "<a href=\"../index.html\">Home</a>…", "mime": "text/html" },
+    { "path": "procedures/billing.html", "content": "…", "mime": "text/html" }
+  ]
+}
+```
+
+- Link between pages with **relative** hrefs (`procedures/intake.html`, `../index.html`). Absolute links to the same artifact (`/a/{slug}/…`) also stay inside the viewer; links to another artifact open it in its own tab.
+- Deep link to a page with `?page=<path>`: `$ORIGIN/a/{slug}/?page=procedures/intake.html` (Home shows it as `#a/{slug}/procedures/intake.html`). The viewer URL follows the page being read.
+- `GET /v1/artifacts/{id}` returns `pages` (the live version's HTML files, entrypoint first) and `entrypoint` when there are 2 or more.
+- Every publish replaces the whole file set, so send all pages each time.
+
+See [core/html-spec/pages.md](../core/html-spec/pages.md#multiple-html-files-sites).
 
 ## Slugs: human vs routing
 
@@ -115,7 +154,7 @@ ShareOut stores two slugs per artifact:
 
 | Field | Scope | Used for |
 |-------|-------|----------|
-| **Human slug** (`display_slug`, set via publish `slug`) | Unique per workspace (or per owner for personal artifacts) | Subdomain URLs (`{ws}.shareout.site/{slug}`), namespaced URLs (`/@{ws}/{slug}`), publish dedup |
+| **Human slug** (`display_slug`, set via publish `slug`) | Unique per workspace (or per owner for personal artifacts) | Subdomain URLs (`{ws}.example.com/{slug}`), namespaced URLs (`/@{ws}/{slug}`), publish dedup |
 | **Routing slug** (`artifacts.slug`, returned as `deployment.slug`) | Globally unique platform-wide | Canonical `/a/{slug}/`, embed URLs, KV caches |
 
 **Publish behavior:**
@@ -123,10 +162,10 @@ ShareOut stores two slugs per artifact:
 - Re-publishing with the same `slug` in the same workspace updates the existing artifact (matched on `display_slug`, not folder).
 - Two different workspaces can each publish `slug: "my-report"` — both succeed.
 - If the human slug is already taken as a **routing** slug by another workspace's artifact, the new artifact's `deployment.slug` is suffixed (e.g. `my-report-a1b2c3`) while subdomain/namespaced URLs keep the clean human slug.
-- **Presenting the URL to a user:** for **workspace** artifacts, share `deployment.subdomain_url` (clean `https://{workspace}.shareout.site/{slug}/`). Do **not** surface the apex `deployment.url` (`/a/{routing-slug}/`) for workspace artifacts — it's an internal routing key that may be suffixed and ugly. For personal (non-workspace) artifacts, `deployment.url` is the share URL.
+- **Presenting the URL to a user:** for **workspace** artifacts, share `deployment.subdomain_url` (clean `https://{workspace}.example.com/{slug}/`). Do **not** surface the apex `deployment.url` (`/a/{routing-slug}/`) for workspace artifacts — it's an internal routing key that may be suffixed and ugly. For personal (non-workspace) artifacts, `deployment.url` is the share URL.
 - Use `deployment.slug` / `deployment.url` only for canonical/machine links (manifests, embeds, KV) — stable identifiers, not the human share link.
 
-**Example:** workspace A and B both publish `slug: "dashboard"`. Workspace B's response returns `deployment.slug: "dashboard-f3a91b"` and `deployment.url: ".../a/dashboard-f3a91b/"`, but the URL to share is `deployment.subdomain_url: "https://workspace-b.shareout.site/dashboard/"`.
+**Example:** workspace A and B both publish `slug: "dashboard"`. Workspace B's response returns `deployment.slug: "dashboard-f3a91b"` and `deployment.url: ".../a/dashboard-f3a91b/"`, but the URL to share is `deployment.subdomain_url: "https://workspace-b.example.com/dashboard/"`.
 
 ## GET /a/{slug}/
 
@@ -180,7 +219,26 @@ Fetch all files for an artifact version.
 }
 ```
 
+## Versions & restore
+
+`GET /v1/artifacts/{id}/versions` lists the 50 newest published versions (`id`, `version_no`, `entrypoint`, `created_at`, `source` — `api`/`agent`/`editor`/`restore`, `message`, `message_source` — `author` or `ai` (generated after publish, may appear a few seconds later), `created_by_email`, `created_by_name`, `restored_from_version_no`, `size_bytes` of the entrypoint, `comment_count` — comment threads written while it was live, `approvals` — `[{name, email, created_at}]`) plus `live_version_id`. Viewer or above.
+
+Each comment records the version that was live when it was written (`versionId` on the [comments API](../sdk/comments.md#review-mode)), and Home shows "on vN" for comments made on an older version. Approve a version (default: the live one) with `POST /v1/home/approvals {"artifactId", "versionId"?, "approved"?}`; `GET /v1/home/review?artifactId=` returns the live version, `can_review` and every approval. Approvals are a record, not a publish gate.
+
+`GET /v1/artifacts/{id}/versions/{no}/source` returns one version's entrypoint text: `{version_no, entrypoint, mime, size_bytes, content, truncated}` (content capped at 512 KB). `415 NOT_TEXT` for a binary entrypoint.
+
+`POST /v1/artifacts/{id}/versions/{no}/restore` (optional `{"message": "…"}`) is the non-destructive restore: it creates a **new** version (`latest_version + 1`) with the old version's files and makes it live (or stages it when blocking tests are on). Every earlier version stays. Editor or owner. Returns `201 {success, version_id, version_no, restored_from_version_no, staged}`; `404 VERSION_NOT_FOUND`, `409 CONFLICT` on a concurrent publish.
+
+**Deprecated:** `POST /v1/artifacts/{id}/rollback` with `{"version_no": 1}` (or `{"version_id": "ver_…"}`) only re-points the production deployment at that version — no new version is created, so the history no longer says what is live. Use restore instead. It still works and answers with a `Deprecation` header. Editor or owner. Returns `{success, deployed_version, version_id}`; `404 VERSION_NOT_FOUND`, `409 NOT_DEPLOYED`.
+
+On `GET /v1/artifacts/{id}`, `current_version` is the version **live in production** (so it reflects a rollback) and `latest_version` is the highest published `version_no`. `live_message` / `live_message_source` are the live version's change note. The next publish becomes `latest_version + 1` and goes live.
+
 ## Collaborator API
+
+Every route below accepts the artifact's own roles (owner / editor / viewer as noted)
+**or** an owner/admin of the workspace the artifact belongs to. Workspace admins govern
+sharing — invite list, ownership, access queue — for any page in their workspace; this
+does not give them content access to a member's private page.
 
 ### GET /v1/artifacts/{id}/collaborators
 
@@ -203,11 +261,25 @@ Remove collaborator.
 
 ### POST /v1/artifacts/{id}/transfer-ownership
 
-Transfer ownership (owner only).
+Transfer ownership (artifact owner, or a workspace owner/admin). The new owner must be
+an **internal** member — an external (Sharee) identity can never own an artifact.
 
 ```json
 { "email": "newowner@example.com" }
 ```
+
+### POST /v1/artifacts/{id}/share
+
+Email the page to up to 10 recipients, optionally granting them a role.
+
+```json
+{ "recipients": ["peer@example.com"], "role": "viewer", "message": "for review" }
+```
+
+`role: "none"` sends the notification without granting anything and needs `viewer`
+access; granting a role needs `editor`. `message` is an editor-level field — a viewer
+may pass the page along, but the free-text note is dropped from their send. Recipients
+are granted only after the daily email limit check passes, so a `429` grants nothing.
 
 ## Favorites API
 
@@ -270,7 +342,7 @@ Move an artifact to trash. The caller must be the owner, or an owner/admin of th
   "deleted_at": "2026-06-20T18:00:00.000Z",
   "recoverable_until": "2026-07-20T18:00:00.000Z",
   "retention_days": 30,
-  "restore_url": "https://shareout.site/v1/artifacts/art_abc123/restore",
+  "restore_url": "$ORIGIN/v1/artifacts/art_abc123/restore",
   "message": "Artifact moved to trash. Recoverable for 30 days, then permanently deleted."
 }
 ```
@@ -300,6 +372,7 @@ Common fields:
 | `name` | string | Display name |
 | `description` | string | Short description |
 | `visibility` | string | `private`, `workspace`, `public` |
+| `tags` | string[] | Replaces the artifact's tag set (max 12, ≤32 chars each; `[]` clears). Single-tag edits: `POST /v1/artifacts/{id}/tags {"label"}` / `DELETE /v1/artifacts/{id}/tags/{label}` |
 | `access_policy` | object | Row-level access policy — see [core/access-policy.md](../core/access-policy.md) |
 | `social_title` / `social_description` / `social_image_url` | string \| null | Link preview overrides |
 | `allow_anon_write` | boolean | Let anonymous visitors mutate json/tables/blobs/datasets on public artifacts |
@@ -309,7 +382,7 @@ Common fields:
 
 All `allow_anon_*` flags default to `false`. See [modules/_shared/publishing.md](../modules/_shared/publishing.md#public-artifacts-read-only-by-default).
 
-**Paid visibility gate.** Public visibility requires a paid plan or paid Teams workspace. Free accounts get `notice` on publish or `VISIBILITY_HELD` on PATCH — see [modules/_shared/publishing.md](../modules/_shared/publishing.md).
+**Visibility is an instance-policy question, not a billing one — there is no paid tier in this build.** An operator can disable public links instance-wide (`OPEN_VISIBILITY_DISABLED`); when that's set, publishers outside the instance's public rollout get `notice` on publish or `VISIBILITY_HELD` on PATCH — see [modules/_shared/publishing.md](../modules/_shared/publishing.md).
 
 Transitioning **into** `public` may run an automated content-safety check. If it isn't cleared instantly, PATCH returns `202` with `code: "MODERATION_HELD"`, a `reason`, and the artifact stays `private` — but it is re-checked automatically within the hour and goes public by itself once it clears (no re-publish needed).
 
@@ -402,11 +475,11 @@ Regenerate the preview thumbnail (headless browser screenshot, 1200×750 webp). 
 
 ### PUT /v1/artifacts/{id}/thumbnail
 
-Upload a custom thumbnail (max 500KB, webp/png/jpeg). See [SKILL.md § Thumbnails](../SKILL.md#thumbnails).
+Upload a custom thumbnail (max 500KB, webp/png/jpeg). See [publishing § custom thumbnail](../modules/_shared/publishing.md#option-3-upload-a-custom-thumbnail).
 
 ## Analytics
 
-View counts and performance for published artifacts. Requires `advanced_analytics` on the account tier (Pro or Teams).
+View counts and performance for published artifacts. Available to the artifact's owner/collaborators — no tier requirement.
 
 ### Account roll-up
 
@@ -511,7 +584,7 @@ Personal home — archives your own unused personal pages.
 |-----|---------|
 | `/a/{slug}/manifest.json` | Web app manifest |
 | `/a/{slug}/sw.js` | Service worker |
-| `/a/{slug}/_pwa/icon-{size}.png` | App icons |
+| `/a/{slug}/_pwa/icon-{size}.png` | App icons (every size returns the one 512×512 `pwa.icon`; not resized) |
 
 ## Related
 

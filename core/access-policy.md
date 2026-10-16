@@ -111,8 +111,8 @@ The page queries the table **normally** — no filtering logic needed. The serve
 <!doctype html>
 <html>
 <head>
-  <link rel="stylesheet" href="https://shareout.site/sdk/shareout.css">
-  <script src="https://shareout.site/sdk/shareout.js"></script>
+  <link rel="stylesheet" href="/sdk/shareout.css">
+  <script src="/sdk/shareout.js"></script>
   <script type="shareout/manifest">
   {
     "version": "2.0",
@@ -133,8 +133,8 @@ The page queries the table **normally** — no filtering logic needed. The serve
   <div data-shareout-page="main">
     <table class="so-table"><tbody data-shareout-binding="rows"></tbody></table>
   </div>
-  <script>
-    const sdk = new ShareOut();
+  <script type="module">
+    const sdk = await ShareOut.create();
     // No client-side tenant filter — the server enforces it. We just query all.
     const rows = await sdk.table('sales').find().sort({ month: -1 }).toArray();
     // `rows` already contains ONLY the signed-in viewer's company rows.
@@ -162,7 +162,7 @@ python3 -c 'import json; print(json.dumps({
       {"match": {"domain": "globex.com"}, "values": [3]}
     ]
   }
-}))' | curl -sS -X POST 'https://shareout.site/v1/publish' \
+}))' | curl -sS -X POST '$ORIGIN/v1/publish' \
   -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' --data-binary @-
 ```
 

@@ -5,6 +5,10 @@ This is the **only** part that is inherently Cloudflare-specific. Everything els
 **workers-best-practices**, **durable-objects**) and the official docs links below
 over guessing CLI flags.
 
+**Install orchestration lives in [SKILL.md](SKILL.md)** — especially *Working in this
+repo*, Path A/B, and *Second instance on the same account*. This file is the CF resource
+checklist; do not skip `npm run deploy` / `provision:cf`.
+
 ---
 
 ## What ShareOut needs on Cloudflare
@@ -23,9 +27,10 @@ over guessing CLI flags.
 | Email binding | Optional | `EMAIL` | OTP/mail vs logs |
 | Workers AI / Vectorize | Optional | `AI`, `VECTORIZE` | Semantic search |
 | Browser Rendering | Optional | `BROWSER` | Thumbnails |
+| Container (LibreOffice) | Optional | `SLIDES_CONVERTER` (`[[containers]]` block in `wrangler.toml`; Docker at deploy) | .pptx/.ppt/.odp import as PDF; else decks stay in Assets |
 | Queues | Optional | analytics views queue | Async analytics |
 
-OSS template: [`shareout-app/wrangler.toml`](../../../shareout-app/wrangler.toml).
+OSS template: `shareout-app/wrangler.toml`.
 
 ---
 
@@ -65,11 +70,22 @@ same names so the agent has current CLI and config guidance.
 
 ## Account prerequisites
 
-1. Cloudflare account (email verified).
+**No account yet?** Agents: follow [SKILL.md — Path 0](SKILL.md#path-0--no-cloudflare-account-yet-agent--human)
+(signup → Workers Paid → `wrangler login`). Companion **cloudflare** / **wrangler** skills
+cover CLI after login; they do **not** create the account for the user.
+
+1. Cloudflare account (email verified) — signup:
+   https://dash.cloudflare.com/sign-up/workers-and-pages
 2. **Workers Paid** subscription — Durable Objects are not available on free Workers
-   in a way that runs full ShareOut.
-3. `npx wrangler login` (or API token with Workers/D1/R2/KV edit).
+   in a way that runs full ShareOut. Pricing:
+   https://developers.cloudflare.com/workers/platform/pricing/
+3. `npx wrangler login` (or API token with Workers/D1/R2/KV edit) — verify with
+   `npx wrangler whoami`.
 4. Optional: domain already on Cloudflare for custom hostnames.
+
+**Name collision:** if this account already runs ShareOut under the default names
+(`shareout`, `shareout-db`, `shareout-artifacts`), rename in `wrangler.toml` before
+`provision:cf` — see [SKILL.md — Second instance](SKILL.md#second-instance-on-the-same-account).
 
 ---
 
@@ -151,14 +167,16 @@ openssl rand -hex 32 | npx wrangler secret put SESSION_SECRET
 npx wrangler secret put GOOGLE_CLIENT_ID
 npx wrangler secret put GOOGLE_CLIENT_SECRET
 
+# Workspace SSO (Okta / OIDC) — also encrypts connector credentials
+openssl rand -hex 32 | npx wrangler secret put CREDENTIALS_KEY   # then team/sso.md
+
 # Vars (dashboard or wrangler.toml [vars])
 # SHAREOUT_BASE_URL=https://…
 # SETUP_ADMIN_EMAIL=you@company.com
-# ADMIN_ALERTS_DISABLED=1
 # ARTIFACT_ORIGIN=https://…   # optional
 ```
 
-Full table: [self-host secrets](../../../docs-site/src/content/docs/self-host/secrets.md).
+Full table: self-host secrets (`docs-site/src/content/docs/self-host/secrets.md` in the `getshareout/shareout` repo).
 
 ---
 
