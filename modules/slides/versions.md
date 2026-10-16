@@ -38,7 +38,7 @@ console.log(version);
 //   createdAt: '2026-05-27T14:30:00Z',
 //   createdBy: { id: 'usr_xxx', name: 'Alice', email: 'alice@example.com' },
 //   isAutoSave: false,
-//   thumbnail: 'https://shareout.site/blobs/...'
+//   thumbnail: '$ORIGIN/blobs/...'
 // }
 ```
 

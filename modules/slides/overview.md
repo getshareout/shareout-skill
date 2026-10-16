@@ -22,7 +22,7 @@ Collaborative presentations with real-time editing, presenter mode, and version 
 │                                                             │
 │  ┌─────────────────┐          ┌─────────────────┐          │
 │  │   Editor Mode   │  sync    │ Published Mode  │          │
-│  │ shareout.site/a │ ───────► │ shareout.site/p │          │
+│  │ $ORIGIN_HOST/a │ ───────► │ $ORIGIN_HOST/p │          │
 │  │  (auth required)│          │  (shareable)    │          │
 │  └────────┬────────┘          └────────┬────────┘          │
 │           │                            │                    │
@@ -72,8 +72,8 @@ Every presentation has two URLs:
 
 | Mode | URL | Purpose |
 |------|-----|---------|
-| **Editor** | `shareout.site/a/{slug}` | Authenticated editing, collaboration |
-| **Published** | `shareout.site/p/{slug}` | Shareable link, read-only, presentation |
+| **Editor** | `$ORIGIN_HOST/a/{slug}` | Authenticated editing, collaboration |
+| **Published** | `$ORIGIN_HOST/p/{slug}` | Shareable link, read-only, presentation |
 
 Changes in editor sync to published in real-time.
 
@@ -127,15 +127,15 @@ Useful for: assigned sections, review workflows, protected content.
 ### Create a Presentation
 
 ```javascript
-const sdk = new ShareOut();
+const sdk = await ShareOut.create();
 
 const result = await sdk.slides.create({
   title: 'Q4 Review',
   visibility: 'public'
 });
 
-console.log(result.editorUrl);    // shareout.site/a/q4-review
-console.log(result.publishedUrl); // shareout.site/p/q4-review
+console.log(result.editorUrl);    // $ORIGIN_HOST/a/q4-review
+console.log(result.publishedUrl); // $ORIGIN_HOST/p/q4-review
 ```
 
 ### Open and Edit

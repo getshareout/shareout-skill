@@ -14,9 +14,14 @@ POST   /v1/jobs/{id}/run     # Manual trigger
 GET    /v1/jobs/{id}/logs    # Recent execution logs (status, error, duration)
 ```
 
-`GET /v1/jobs?artifact_id=…` is owner-aware: the artifact's owner/editor sees **every**
-schedule on it (including viewer DM subscriptions); anyone else sees only their own.
-A job's creator **or** the artifact owner may pause/delete/run it.
+`GET /v1/jobs?artifact_id=…` is owner-aware: the artifact's owner/editor sees its **shared**
+schedules plus their own personal deliveries; other people's personal subscriptions (a Slack DM,
+an email to their own address, their own linked Telegram) stay hidden. Anyone else sees only
+their own. Without `artifact_id` you get your own jobs, optionally narrowed with `?workspace_id=`.
+A job's creator **or** the artifact owner may pause/delete/run it by id.
+Viewers may only schedule delivery to themselves (their own email, their linked
+Telegram, or a Slack DM); anything else — or an artifact you can't access — is `403 FORBIDDEN`.
+Cron schedules run in **UTC**: convert the recipient's local time before sending.
 
 ## Action Types
 
@@ -102,6 +107,10 @@ A job's creator **or** the artifact owner may pause/delete/run it.
 | `retry_config` | object | No | Retry configuration |
 
 > **Always set `title` and `description`** when creating a schedule. They appear in the user's **My schedules** view and the workspace **Admin → Schedules** tab. `PATCH /v1/jobs/{id}` accepts `title` / `description` too (send `null` to clear).
+
+### Job object
+
+`POST /v1/jobs` (201), `GET /v1/jobs`, `GET /v1/jobs/{id}` and `PATCH /v1/jobs/{id}` all return the same shape: `enabled` is a boolean; `next_run_at`, `last_run_at`, `created_at`, `updated_at` are ISO 8601 strings (or `null`). Event-triggered jobs have `schedule: ""` and `next_run_at: null`. `GET /v1/jobs/{id}/logs` entries also carry an ISO `created_at`.
 
 ### Retry Configuration
 
@@ -219,7 +228,7 @@ interface WebhookConfig {
   url: string;                    // HTTPS only
   method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';  // Default: POST
   headers?: Record<string, string>;
-  includeArtifactData?: boolean;  // Include data_json in payload
+  includeArtifactData?: boolean;  // Include up to 50 sdk.json keys as `data`
 }
 ```
 
@@ -228,7 +237,7 @@ interface WebhookConfig {
 {
   "artifact_id": "art_abc123",
   "artifact_name": "My Report",
-  "artifact_url": "https://shareout.site/a/my-report/",
+  "artifact_url": "$ORIGIN/a/my-report/",
   "triggered_at": "2024-01-08T09:00:00Z",
   "data": {...}  // Only if includeArtifactData=true
 }
@@ -283,9 +292,9 @@ the message then the snapshot.
 
 **Viewer self-subscription:** a non-owner with access to an artifact may schedule a
 Slack **DM to themselves** (`targetType: 'dm'` with their own `slackUserId`) or an
-email to their own account address — no other channels/recipients. The artifact's
-owner sees and can pause/delete every schedule on their artifact (see
-`GET /v1/jobs?artifact_id=…` below). Each run re-checks the creator still has access;
+email to their own account address — no other channels/recipients. Such a subscription is
+private to its creator: it does not appear in the owner's `GET /v1/jobs?artifact_id=…`
+list, though the artifact owner can still pause/delete it by id. Each run re-checks the creator still has access;
 if access was revoked the job auto-pauses.
 
 ### TelegramConfig

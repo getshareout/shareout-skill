@@ -5,7 +5,7 @@ ShareOut SDK for browser artifacts.
 ## Installation
 
 ```html
-<script src="https://shareout.site/sdk/shareout.js"></script>
+<script src="/sdk/shareout.js"></script>
 <script>
 (async () => {
   const sdk = await ShareOut.create();
@@ -15,8 +15,8 @@ ShareOut SDK for browser artifacts.
 
 **Rules:**
 - Load SDK before calling `ShareOut.create()` (or `new ShareOut()` for simple local-only scripts)
-- Use `https://shareout.site/sdk/shareout.js` (not jsdelivr) — or relative `/sdk/shareout.js` inside published artifacts (content host serves the same bundle)
-- **Live workspace data (Mixpanel, BigQuery, REST connections):** read [live-data.md](live-data.md) — two-origin sandbox (`shareout.site` shell + `<hex>.shareoutcdn.site` iframe), no raw `fetch`
+- Inside published artifacts use the root-relative `/sdk/shareout.js` (never jsdelivr, never `$ORIGIN`): every host an artifact runs on serves the same bundle, so the path cannot break and no placeholder can survive into production
+- **Live workspace data (Mixpanel, BigQuery, REST connections):** read [live-data.md](live-data.md) — two-origin sandbox (`$ORIGIN_HOST` shell + `<hex>.shareoutcdn.site` iframe), no raw `fetch`
 - Debug `ShareOut is not defined` → check script URL and order
 
 ## Initialization
@@ -74,7 +74,7 @@ ShareOut.ready(); // optional: hide the skeleton the instant the page is painted
 
 ## Local Development
 
-There is no mock/localStorage mode. Locally, artifacts talk to a real ShareOut backend — run the worker with `npm run dev` (see repo `CLAUDE.md`) and publish to it, or develop against `shareout.site` directly. Stores hit the network; there is no offline shim.
+There is no mock/localStorage mode. Locally, artifacts talk to a real ShareOut backend — run the worker with `npm run dev` (see repo `CLAUDE.md`) and publish to it, or publish to your deployed $ORIGIN. Stores hit the network; there is no offline shim.
 
 ## Error Handling
 

@@ -24,7 +24,7 @@ const link = await deck.links.create({
   maxViews: 25,      // optional
   expiresAt: '2026-12-31T00:00:00.000Z', // optional
 });
-// link.url → https://shareout.site/p/<deck>?l=lnk_...
+// link.url → $ORIGIN/p/<deck>?l=lnk_...
 await deck.links.list();            // live view counts
 await deck.links.revoke('lnk_...'); // past analytics kept
 ```

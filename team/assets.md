@@ -16,13 +16,13 @@ Files can land in the library from three other channels — each records **prove
 
 | Channel | How | Who |
 | --- | --- | --- |
-| **Workspace file inbox** | Email attachments to `{workspace-slug}@inbox.shareout.site` | Workspace members only — sender must be signed up with that email |
+| **Workspace file inbox** | Email attachments to `{workspace-slug}@inbox.example.com` | Workspace members only — sender must be signed up with that email |
 | **Chat attach** | Paperclip in the Home **Ask your workspace…** composer | You (uploads to your scope's asset bucket) |
 | **Share from phone** | Install ShareOut as a PWA, then **Share → ShareOut** from any app | You — opens Home with the file ready to attach in chat |
 
 The workspace inbox address is in **Admin → Settings → File inbox** (copy with one click). Admins get a bell notification and optional Telegram ping when a member emails files in. Spreadsheets (`.xlsx`, `.csv`), decks (`.pptx`), PDFs, and images are typical payloads.
 
-> **Not the same as a page inbox:** a **page inbox** (`your-page@inbox.shareout.site`) captures mail *into one artifact* for automations — see [../integrations/inbound-email.md](../integrations/inbound-email.md). The **workspace file inbox** feeds the shared **Assets** library and the AI assistant instead.
+> **Not the same as a page inbox:** a **page inbox** (`your-page@inbox.example.com`) captures mail *into one artifact* for automations — see [../integrations/inbound-email.md](../integrations/inbound-email.md). The **workspace file inbox** feeds the shared **Assets** library and the AI assistant instead.
 
 ## Organize in folders
 
@@ -32,9 +32,13 @@ Sharing a **folder** with a client (Admin → Sharing) also shares the **files**
 
 ## Visibility
 
-Each file is either **workspace-visible** (default — any member can see and embed it) or **private** (only you, until you share it). Toggle visibility on a file tile. Private files show a small badge.
+Each workspace file has a `visibility`, shown as a badge on its tile and chosen at upload (Team only preselected); change it by clicking the file → **Who can see it**:
 
-- **Workspace-visible** files embed in any page via `/v1/files/dlv_…/content`.
+- **`team`** — "Team only", the default for new workspace uploads (API default too). Signed-in internal members of the workspace can open it; anonymous viewers, outsiders, external members and folder-grant sharees get 403. Not loadable inside a published artifact (needs a signed-in session).
+- **`private`** — "Only you": owner + direct shares.
+- **`workspace`** — "Anyone with the link". Use this for files embedded in artifacts or sent outside the team. Existing files keep whatever they had; personal-library uploads still default to this.
+
+- **Anyone with the link (`workspace`) is not membership-gated**, unlike artifact-page `workspace` visibility (which does check membership). The id is an unguessable random token (not enumerable), but ShareOut does **not** check workspace membership before serving the bytes — anyone who obtains the URL (a leaked link, a screenshot, a shared page's source) can open it. Don't upload anything you'd need real access control on; use **team**, or **private** + an explicit grant, instead.
 - **Private** files are hidden from other members and anonymous delivery links — share deliberately via [external-sharing.md](external-sharing.md) or **Share with a person** (below).
 
 ## Versions

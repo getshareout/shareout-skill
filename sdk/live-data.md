@@ -12,7 +12,7 @@ Published HTML uses a **two-origin model** (ADR 30):
 
 | Layer | Host | What runs there |
 |-------|------|-----------------|
-| **Trusted shell** | `shareout.site` (or workspace subdomain) | Page chrome, link-preview meta, session cookies, parent→iframe bridge |
+| **Trusted shell** | `$ORIGIN_HOST` (or workspace subdomain) | Page chrome, link-preview meta, session cookies, parent→iframe bridge |
 | **Untrusted content** | `<hex>.shareoutcdn.site` | Your artifact HTML/JS inside a sandboxed iframe (opaque origin) |
 
 Each artifact's immutable id (`art_<hex>`) maps to a dedicated content subdomain
@@ -33,7 +33,7 @@ via `postMessage`.
 
 ```html
 <!-- Absolute URL (always works) or relative /sdk/shareout.js (resolves on content host) -->
-<script src="https://shareout.site/sdk/shareout.js"></script>
+<script src="/sdk/shareout.js"></script>
 <script>
 (async () => {
   const sdk = await ShareOut.create();  // waits for embedded sessionToken in iframe
@@ -45,7 +45,7 @@ via `postMessage`.
 
 **SDK on the content host:** the same bundles (`/sdk/shareout.js`, `shareout.css`,
 `shareout-ui.js`) are also served on `<hex>.shareoutcdn.site`, so relative `/sdk/…`
-paths work inside the iframe. `ShareOut.create()` still talks to `shareout.site` for
+paths work inside the iframe. `ShareOut.create()` still talks to `$ORIGIN_HOST` for
 the data API — do not change `baseUrl` to the content host.
 
 Use an async IIFE (or top-level `await` in a module script). Do **not** call
@@ -118,32 +118,28 @@ See [connections.md](connections.md) for materialize / scheduled refresh.
 
 ## Data Platform providers (BigQuery, Snowflake, GA, Shopify)
 
-Platform connections (`kind: platform`) are queried via **`sdk._internalFetch`**
-(relative to `/v1/data/{artifactId}`). There is no `sdk.platform` store in the browser
-bundle today — do not invent it.
+Platform connections (`kind: platform`) are queried via **`sdk.platform`** — the
+preferred store, replacing raw `sdk._internalFetch('/platform/…')` calls.
 
 ```javascript
 const sdk = await ShareOut.create();
 
 // 1. Resolve connection id (owner-only)
-const { connections } = await sdk._internalFetch('/platform/connections');
+const connections = await sdk.platform.connections();
 const bq = connections.find(c => c.name === 'bigquery');
 if (!bq) throw new Error("No 'bigquery' connection in this workspace.");
 
 // 2. Execute provider endpoint
-const result = await sdk._internalFetch('/platform/bigquery/jobs.query/execute', {
-  method: 'POST',
-  body: JSON.stringify({
-    connectionId: bq.id,
-    params: {
-      pathParams: { projectId: 'analytics-platform' },
-      body: {
-        query: 'SELECT CAST(MAX(date) AS STRING) AS maxd FROM `proj.dataset.table`',
-        useLegacySql: false,
-        maxResults: 5000,
-      },
+const result = await sdk.platform.provider('bigquery').execute('jobs.query', {
+  connectionId: bq.id,
+  params: {
+    pathParams: { projectId: 'analytics-platform' },
+    body: {
+      query: 'SELECT CAST(MAX(date) AS STRING) AS maxd FROM `proj.dataset.table`',
+      useLegacySql: false,
+      maxResults: 5000,
     },
-  }),
+  },
 });
 
 // 3. Parse BigQuery rows
@@ -160,8 +156,9 @@ const rows = (bqResp.rows || []).map(row => {
 ```
 
 Provider-specific endpoint paths: see [../integrations/overview.md](../integrations/overview.md)
-and each provider doc. Pattern is always
-`/platform/{providerId}/{endpointId}/execute`.
+and each provider doc. `sdk.platform.provider(id).execute(endpointId, opts)` always hits
+`/platform/{providerId}/{endpointId}/execute` under the hood; `sdk.platform.execute(providerId, endpointId, opts)`
+is the one-call shortcut for the same thing.
 
 ### BigQuery pagination
 
@@ -197,10 +194,7 @@ async function fetchAllBqRows(sdk, connectionId, projectId, sql) {
           body: { query: sql, useLegacySql: false, maxResults: 10000 },
         };
 
-    const result = await sdk._internalFetch(`/platform/bigquery/${endpointId}/execute`, {
-      method: 'POST',
-      body: JSON.stringify({ connectionId, params }),
-    });
+    const result = await sdk.platform.provider('bigquery').execute(endpointId, { connectionId, params });
     if (result.success === false || result.error) {
       throw new Error(result.error?.message || 'Query failed');
     }
@@ -235,7 +229,7 @@ If you target an older SDK, run warehouse queries sequentially or upgrade the wo
 | `sdk.json` / `sdk.table()` | Yes (scoped by access policy) | Yes | Yes (same as viewer rules) |
 | `sdk.connection().query/fetch` (shared workspace generic) | **No** | Yes | **No** |
 | `sdk.connection().query/fetch` (`credentialScope: per_user`) | **No** | Yes (own token) | Yes (own token via `my-credentials`) |
-| `sdk._internalFetch('/platform/…')` (shared, not private) | **No** | Yes | Yes |
+| `sdk.platform` (shared, not private) | **No** | Yes | Yes |
 
 Live connection queries are **not** available to password-only viewers — they never hold a ShareOut user identity. For **public** dashboards, use **materialize** so reads come from dataset/table, not live credentials.
 
@@ -268,7 +262,7 @@ await sdk.connection('mixpanel').materialize({
 - [ ] `const sdk = await ShareOut.create()` inside async IIFE
 - [ ] No raw `fetch` to `/v1/data/{artifactId}/…`
 - [ ] REST sources → `sdk.connection('name').fetch(…)`
-- [ ] BigQuery / platform → `sdk._internalFetch('/platform/…')`
+- [ ] BigQuery / platform → `sdk.platform` (not raw `sdk._internalFetch('/platform/…')`)
 - [ ] BigQuery result sets that may exceed one page → follow `pageToken` via `jobs.getQueryResults`
 - [ ] Defensive unwrap of provider nested `.data`
 - [ ] Owner-only live queries documented in UI copy, or materialize for public audience

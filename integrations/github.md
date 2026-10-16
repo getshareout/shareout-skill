@@ -11,7 +11,7 @@ Important behavior:
 - Tokens are stored per artifact, not per ShareOut user.
 - Public artifacts can use the simplified flow directly.
 - Data routes accept either the real artifact id, such as `art_...`, or the production deployment slug.
-- GitHub OAuth returns through `https://shareout.site/auth/callback`; ShareOut detects GitHub callbacks from the `state` parameter.
+- GitHub OAuth returns through `$ORIGIN/auth/callback`; ShareOut detects GitHub callbacks from the `state` parameter.
 - The hosted SDK exposes the flow at `shareout.github`.
 - GitHub tokens do not expire unless revoked.
 
@@ -63,13 +63,13 @@ Response:
 
 The generated OAuth URL uses:
 
-- `redirect_uri=https://shareout.site/auth/callback`
+- `redirect_uri=$ORIGIN/auth/callback`
 - `scope=repo`
 
 Agent example:
 
 ```bash
-curl "https://shareout.site/v1/data/my-artifact-slug/github/auth-url"
+curl "$ORIGIN/v1/data/my-artifact-slug/github/auth-url"
 ```
 
 ## GET /github/token-status
@@ -227,14 +227,14 @@ Errors:
 
 ## SDK Usage
 
-The hosted SDK at `https://shareout.site/sdk/shareout.js` provides the `shareout.github` namespace.
+The SDK at `/sdk/shareout.js` provides the `shareout.github` namespace.
 
 ### shareout.github.authorize(returnUrl?)
 
 Opens a popup for GitHub OAuth. Returns a promise that resolves to `true` on success or `false` on failure.
 
 ```javascript
-const sdk = new ShareOut();
+const sdk = await ShareOut.create();
 const connected = await sdk.github.authorize();
 if (connected) {
   console.log('GitHub connected!');
@@ -302,15 +302,15 @@ console.log(result.filesCommitted); // 3
 <!DOCTYPE html>
 <html>
 <head>
-  <script src="https://shareout.site/sdk/shareout.js"></script>
+  <script src="/sdk/shareout.js"></script>
 </head>
 <body>
   <button id="connect">Connect GitHub</button>
   <button id="export" disabled>Export to GitHub</button>
   <div id="status"></div>
 
-  <script>
-    const sdk = new ShareOut();
+  <script type="module">
+    const sdk = await ShareOut.create();
     const connectBtn = document.getElementById('connect');
     const exportBtn = document.getElementById('export');
     const status = document.getElementById('status');
@@ -348,7 +348,7 @@ To use GitHub integration, configure a GitHub OAuth App:
 
 1. Go to https://github.com/settings/developers
 2. Click "New OAuth App"
-3. Set Authorization callback URL to: `https://shareout.site/auth/callback`
+3. Set Authorization callback URL to: `$ORIGIN/auth/callback`
 4. Copy Client ID and Client Secret
 5. Add to ShareOut worker secrets:
    ```bash

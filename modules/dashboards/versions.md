@@ -1,5 +1,7 @@
 # Version History
 
+> **Not available — design spec only.** The `sdk.dashboards.*` module has no backend: `/v1/data/{artifactId}/dashboards` returns 404 on every deployment. Do not build on it. For a dashboard with data, use [`sdk.table`](../../sdk/table.md) / [`sdk.json`](../../sdk/json.md) and the patterns in [patterns/dashboards.md](../../patterns/dashboards.md).
+
 Snapshot-based versioning with named versions, auto-save, and diff comparison.
 
 ## Overview
@@ -38,7 +40,7 @@ console.log(version);
 //   createdAt: '2026-05-27T14:30:00Z',
 //   createdBy: { id: 'usr_xxx', name: 'Alice', email: 'alice@example.com' },
 //   isAutoSave: false,
-//   thumbnail: 'https://shareout.site/blobs/...'
+//   thumbnail: '$ORIGIN/blobs/...'
 // }
 ```
 

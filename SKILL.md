@@ -1,8 +1,8 @@
 ---
 name: "shareout-skill"
-version: "2.51.0"
-updated_at: "2026-07-25T20:00:00Z"
-description: "Publish, update, inspect, and manage ShareOut artifacts on a hosted or self-hosted instance. Use when the user wants to build or publish a web artifact (HTML apps, dashboards, forms, or CSV/Markdown/JSON/TXT), wire SDK data stores, live data, schedules, sharing, analytics, or in-artifact AI. If the user wants to INSTALL or DEPLOY ShareOut on Cloudflare first, load deploy/SKILL.md immediately."
+version: "2.57.0"
+updated_at: "2026-10-16T18:00:00Z"
+description: "Publish, update, inspect, and manage ShareOut artifacts on a self-hosted instance. Use when the user wants to build or publish a web artifact (HTML apps, dashboards, forms, or CSV/Markdown/JSON/TXT), wire SDK data stores, live data, schedules, sharing, analytics, or in-artifact AI. If the user wants to INSTALL or DEPLOY ShareOut on Cloudflare first, load deploy/SKILL.md immediately."
 skill_endpoint: "/v1/skill"
 ---
 
@@ -12,7 +12,7 @@ ShareOut is the workspace where AI work lives: publish HTML (and CSV/MD/JSON/TXT
 with persistent data, collab, connectors, and automation — on **your** instance.
 
 **Source of truth:** this tree lives in the product repo at
-`getshareout/shareout` → `skills/ShareOutSkill/` (see [../README.md](../README.md)).
+`getshareout/shareout` → `skills/ShareOutSkill/` (see `README.md` at the repo root).
 Do not treat `getshareout/shareout-skill` as a second place to edit — that repo is a
 **mirror / install surface**. Runtime copy for agents: `GET $ORIGIN/v1/skill`.
 
@@ -21,17 +21,45 @@ This file is the **use** skill (build & publish).
 
 ---
 
+## Talk to the user
+
+The person you are helping is usually not technical. Every message you send them:
+
+- **Reply in their language.** If they write in Spanish, answer in natural Spanish — and in
+  Argentina use *vos* ("¿Querés que la publique?", not "¿Quiere usted…?"). Same for any
+  other language: match theirs, never switch to English on your own.
+- **No jargon.** Say "page" / "página", "link", "private" / "privada", "only you can see it"
+  — not artifact, deploy, endpoint, slug, token, visibility, 401. Technical words are for
+  your own reasoning, not their screen.
+- **Always end with the link** when you published or changed something — the full URL, on
+  its own line, and say who can open it (anyone / your team / only you).
+- **Never paste a token, API key or `device_code` back into the chat**, and never ask them
+  to paste one unless there is no other way. Keys go in `~/.shareout/credentials` or the
+  connector, not in conversation.
+- **Tell the truth about the result.** If the response has `visibility_downgraded: true`,
+  the page is private — say so and why (the `notice`), never announce it as public.
+
+If something goes wrong, see [If you get stuck](#if-you-get-stuck) — don't make them debug it.
+
+---
+
 ## 0) Instance origin — resolve before any API call
 
-Every URL in this skill tree may show `https://shareout.site` as the **hosted example**.
-On self-host (and any non-default instance) substitute **`$ORIGIN`**.
+ShareOut is **self-hosted only**. There is no public hosted API. Example URLs in this
+tree are written against the instance origin (scheme + host, no trailing slash) and
+its hostname.
 
-**Resolve origin (first match wins):**
+**Downloaded from an instance?** (`GET …/v1/skill`, a Library download, or the
+well-known SKILL.md.) Then the instance already filled itself in: the origin in this
+file is **$ORIGIN**. Use it — do not ask the user. If that still reads as a literal
+placeholder (this file came from a repo checkout), resolve it — first match wins:
 
 1. `~/.shareout/credentials` → `"origin"` field  
 2. Env `SHAREOUT_ORIGIN` or `SHAREOUT_BASE_URL`  
 3. User-stated instance URL  
-4. Only if none of the above: `https://shareout.site` (public hosted product)
+
+If none of the above: **stop** and load [deploy/SKILL.md](deploy/SKILL.md) (or ask
+the user for their instance URL). Do **not** invent a default host.
 
 ```json
 // ~/.shareout/credentials  (preferred)
@@ -46,10 +74,8 @@ On self-host (and any non-default instance) substitute **`$ORIGIN`**.
 | API | `$ORIGIN/v1/...` |
 | Skill zip | `GET $ORIGIN/v1/skill` |
 | Skill version | `GET $ORIGIN/v1/skill/version` |
-| SDK | `$ORIGIN/sdk/shareout.js` (+ `.css`, `shareout-ui.js`) |
+| SDK | `$ORIGIN/sdk/shareout.js` (+ `.css`, `shareout-ui.js`) — inside artifact HTML write `/sdk/…` |
 | Smoke | `SHAREOUT_ORIGIN=$ORIGIN SHAREOUT_TOKEN=so_… npm run smoke:hello` |
-
-**Never** publish to `shareout.site` when the user runs their own Worker.
 
 ---
 
@@ -61,13 +87,14 @@ On self-host (and any non-default instance) substitute **`$ORIGIN`**.
 | Build / publish / update artifacts on an instance that already exists | Stay here |
 | Cloudflare-only confusion (Workers, D1, custom domain) while deploying | deploy skill → Cloudflare companion skills listed there |
 
-If there is no token **and** no reachable origin yet, you are in **install** territory — do not invent a hosted account unless they asked for shareout.site.
+If there is no token **and** no reachable origin yet, you are in **install** territory —
+load [deploy/SKILL.md](deploy/SKILL.md).
 
 ---
 
 ## Version check (against **their** origin)
 
-Frontmatter `version` is this file (`2.51.0`).
+Frontmatter `version` is this file (`2.57.0`).
 
 1. `GET $ORIGIN/v1/skill/version` → `{ "version", "updated_at" }`.
 2. If newer: download `GET $ORIGIN/v1/skill` (zip), replace local skill copy, continue.
@@ -121,6 +148,7 @@ personal artifacts. An instance owner narrows the surface per workspace under
 
 - **Deploy / domain / Cloudflare** → [deploy/SKILL.md](deploy/SKILL.md)
 - **Build new artifact** → [creating/overview.md](creating/overview.md)
+- **Save / share / install a team skill** → [team/skill-marketplace.md](team/skill-marketplace.md)
 - **Workspace admin** → [team/SKILL.md](team/SKILL.md)
 
 ---
@@ -141,9 +169,9 @@ Live external systems: REST, warehouses, Sheets -> sdk.connection / live-data
 
 ```html
 <head>
-  <link rel="stylesheet" href="$ORIGIN/sdk/shareout.css">
-  <script src="$ORIGIN/sdk/shareout-ui.js" defer></script>
-  <script src="$ORIGIN/sdk/shareout.js"></script>
+  <link rel="stylesheet" href="/sdk/shareout.css">
+  <script src="/sdk/shareout-ui.js" defer></script>
+  <script src="/sdk/shareout.js"></script>
 </head>
 <script>
 (async () => {
@@ -154,11 +182,42 @@ Live external systems: REST, warehouses, Sheets -> sdk.connection / live-data
 
 Rules:
 
-- Load `$ORIGIN/sdk/shareout.js` before `ShareOut.create()`.
+- Load `/sdk/shareout.js` before `ShareOut.create()`. Keep it root-relative: the artifact's own host serves the bundle, so there is no placeholder left to substitute and no second origin on the critical path.
 - Prefer `await ShareOut.create()` so the embedded Bearer token is ready.
 - Use SDK methods inside published HTML — not raw `fetch` to `/v1/data/...` from the sandbox. See [sdk/live-data.md](sdk/live-data.md).
-- Prefer `$ORIGIN/sdk/shareout.css` and `.so-` classes. See [modules/ui/overview.md](modules/ui/overview.md).
+- Prefer `/sdk/shareout.css` and `.so-` classes. See [modules/ui/overview.md](modules/ui/overview.md).
 - Do not use third-party CDN mirrors of the ShareOut SDK.
+
+### Third-party libraries
+
+Load them from the instance, not a public CDN:
+
+```html
+<script src="$ORIGIN/vendor/plotly.js-dist-min@2.35.2/plotly.min.js" defer></script>
+<script src="$ORIGIN/vendor/d3@7/dist/d3.min.js" defer></script>
+<link rel="stylesheet" href="$ORIGIN/vendor/leaflet@1.9.4/dist/leaflet.css">
+```
+
+`$ORIGIN/vendor/<npm package>@<version>/<file inside the package>` — the same layout
+jsDelivr uses, so any `cdn.jsdelivr.net/npm/…` URL translates by dropping the host and
+`/npm`. The instance fetches the bytes once, stores them and serves them immutable +
+edge-cached, on a host the viewer is already connected to. Publishing rewrites
+`cdn.plot.ly`, `d3js.org`, jsDelivr and unpkg URLs to this automatically, so an existing
+artifact is never broken by writing the CDN URL — writing `/vendor/…` just skips the
+translation.
+
+If the library you need is not vendored yet (`GET $ORIGIN/v1/workspaces/{id}/vendor-packages`
+lists what is), a workspace admin adds it with one call:
+
+```bash
+curl -X POST "$ORIGIN/v1/workspaces/$WS/vendor-packages" \
+  -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+  -d '{"package":"highcharts"}'
+```
+
+Details and the instance-wide knobs (`VENDOR_PACKAGES_EXTRA`, `VENDOR_ALLOW_ANY`):
+[team/libraries.md](team/libraries.md#public-npm-libraries-vendor) ·
+[patterns/performance.md](patterns/performance.md#libraries-load-from-the-instance-not-a-public-cdn).
 
 ---
 
@@ -240,13 +299,32 @@ All later requests: `Authorization: Bearer so_…` against **`$ORIGIN`**.
 Build JSON however you want; prefer `curl` for the HTTP call (Cloudflare may block some HTTP clients):
 
 ```bash
-ORIGIN=$(python3 -c "import json,os; c=json.load(open(os.path.expanduser('~/.shareout/credentials'))); print(c.get('origin') or os.environ.get('SHAREOUT_ORIGIN','https://shareout.site'))")
+ORIGIN=$(python3 -c "import json,os; c=json.load(open(os.path.expanduser('~/.shareout/credentials'))); print(c.get('origin') or os.environ.get('SHAREOUT_ORIGIN','$ORIGIN'))")
 TOKEN=$(python3 -c "import json,os; print(json.load(open(os.path.expanduser('~/.shareout/credentials')))['token'])")
 python3 build_payload.py | curl -sS -X POST "$ORIGIN/v1/publish" \
   -H "Authorization: Bearer $TOKEN" \
   -H 'Content-Type: application/json' \
   --data-binary @-
 ```
+
+Minimal payload — publish into the user's team workspace so their team sees it
+(omit `workspace_id` and it lands in their personal space instead):
+
+```json
+{
+  "name": "Hello ShareOut",
+  "workspace_id": "wsp_…",
+  "visibility": "workspace",
+  "files": [{ "path": "index.html", "content": "<!DOCTYPE html><h1>Hello</h1>", "mime": "text/html", "encoding": "utf8" }]
+}
+```
+
+Re-publishing the same `slug` adds a new version. Add `"message": "one line on what changed"`
+so the page history says why; leave it out and ShareOut writes a short note itself.
+To go back to an older version, `POST /v1/artifacts/{id}/versions/{no}/restore` (a new
+version with the old files; `/rollback` is deprecated). Several pages? Ship one HTML file
+per page in `files[]` and link them with relative hrefs:
+[api/artifacts.md](api/artifacts.md#multi-page-sites-several-html-files).
 
 Full API: [api/overview.md](api/overview.md).
 
@@ -272,12 +350,60 @@ doing workspace administration or workspace-scoped features:
 
 ---
 
+## If you get stuck
+
+Every error body carries `code`, usually a `hint` (what to do next), sometimes `docs`, and
+always a `request_id`. Read them before retrying — never retry the same call blindly.
+Codes and fields: [api/errors.md](api/errors.md).
+
+| You see | Do this | Tell the user (in their language) |
+|---------|---------|-----------------------------------|
+| `401 UNAUTHORIZED` (`reason`: missing / invalid / revoked / expired) | Get a fresh key: the user opens `$ORIGIN/home?view=connect` (connector or API token), or run device login ([auth.md](auth.md)). Retry once. | "I need you to reconnect me to ShareOut — open this link and come back." |
+| `403 FORBIDDEN` / `INSUFFICIENT_SCOPE` | Don't retry. The key or the person lacks access to that workspace/page. | "You don't have access to that space yet — ask its admin to invite you." |
+| `429 RATE_LIMIT_EXCEEDED` / `RATE_LIMITED` | Wait until `Retry-After` / `reset`; batch work instead of looping. | "ShareOut asks me to wait until HH:MM before publishing again." |
+| `201` with `visibility_downgraded: true` | It published, but private. Don't re-publish to "fix" it. | "It's published, but only you can see it for now, because …" (the `notice`) |
+| `moderation` in the publish result, or `202 MODERATION_HELD` | Under automatic review; it goes public by itself when it clears. Don't re-publish. | "It's published and under a quick automatic review; it'll open to everyone on its own." |
+| `SIGNUPS_PAUSED` | Use device login if they already have an account; otherwise they need an invite. | "This ShareOut only lets invited people in — ask whoever runs it for an invite." |
+| A `403`/`5xx` whose body is **not JSON** (e.g. `error code: 1010`, an HTML "Attention Required" page) | That's Cloudflare in front of ShareOut, not ShareOut. Retry once with `curl` (some clients' user agents are blocked); if it still fails, stop and file a ticket (below) with the status, the body's first line and any Ray ID. Don't invent workarounds (other IPs, other tools, asking the user to whitelist anything). | "ShareOut's network blocked my request. I've told the team (ticket #…)." |
+| Any `5xx`, or the same error twice after following its `hint` | Stop and file a ticket (below). | "Something broke on ShareOut's side. I've told the team (ticket #…)." |
+
+**Ask a human — don't loop silently.** After **2 failed attempts** at the same step, or on
+**any 5xx**, create a support ticket ([api/support.md](api/support.md)):
+
+```bash
+curl -sS -X POST "$ORIGIN/v1/support/tickets" \
+  -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+  -d '{"subject":"Publish fails with INTERNAL_ERROR",
+       "body":"User wanted: publish their sales dashboard.\nTried: POST /v1/publish twice.\nError: 500 INTERNAL_ERROR\nrequest_id: 8a1f…\nartifact_id: art_… (if any)"}'
+```
+
+Put in `body`: what the user wanted, what you tried, the error `code`, the `request_id`, and
+the `artifact_id` if there is one. Then tell the user, in their language, that the ShareOut
+team was notified and give them the ticket id — and stop retrying. Using the ShareOut
+connector (`$ORIGIN/mcp`) instead of the REST API? Call its `report_problem` tool with the
+same details.
+
+Answering questions about what a workspace knows (clients, projects, numbers) through the
+connector? Use its `knowledge_search`, `knowledge_entity`, `knowledge_facts`,
+`knowledge_get`, `knowledge_from_artifact` and `knowledge_status` tools and cite the source
+of every fact — see [integrations/mcp-connector.md](integrations/mcp-connector.md) and
+[team/knowledge.md](team/knowledge.md). The connector also covers page history
+(`list_versions`, `restore_version`), review (`list_comments`, `resolve_comment`,
+`assign_comment`, `approve_version`), schedules (`list_jobs`) and folder sharing
+(`folder_access`, `share_with_person`, `revoke_share`, `folder_activity`).
+
+---
+
 ## Non-negotiable rules
 
-- Resolve `$ORIGIN` before authenticated calls; keep it in credentials.
+- Know the instance origin before authenticated calls (see §0); keep it in credentials.
 - Prefer documented endpoints; do not invent request shapes.
 - No token → First Run (or deploy skill if no instance).
 - Verify artifact ids before update/delete.
 - `ShareOut.create()` + SDK for live artifact data.
+- Never `localStorage`/`sessionStorage` in a published artifact: it runs in an
+  opaque-origin sandbox and both throw `SecurityError`. Use `sdk.json`.
 - Design taste on anything visual.
+- Speak the user's language, plainly, and end with the link ([Talk to the user](#talk-to-the-user)).
+- Never loop on an error: follow its `hint`, then file a support ticket ([If you get stuck](#if-you-get-stuck)).
 - Deploy/install → [deploy/SKILL.md](deploy/SKILL.md); do not improvise Cloudflare setup without [deploy/cloudflare.md](deploy/cloudflare.md).

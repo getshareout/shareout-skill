@@ -42,12 +42,17 @@ interface CreateOptions {
 
 interface CreateResult {
   id: string;
-  editorUrl: string;              // shareout.site/a/{slug}
-  publishedUrl: string;           // shareout.site/p/{slug}
-  editorArtifactId: string;
-  publishedArtifactId: string;
+  editorUrl: string;              // $ORIGIN_HOST/a/{slug}
+  publishedUrl: string;           // $ORIGIN_HOST/p/{slug}
+  editorArtifactId: string;       // host artifact id (the presentation lives inside it)
+  publishedArtifactId: string;    // same host artifact id — /p/{slug} serves it in view mode
 }
 ```
+
+REST equivalent (owner Bearer token): `POST /v1/data/{artifactId}/slides` with the same body
+returns `{ success, data: { ...presentation, editorUrl, publishedUrl, editorArtifactId,
+publishedArtifactId } }`. `GET /v1/data/{artifactId}/slides` lists them,
+`GET /v1/data/{artifactId}/slides/{presId}` returns one with its `slides`.
 
 **Example:**
 
@@ -58,8 +63,8 @@ const result = await sdk.slides.create({
   visibility: 'public'
 });
 
-console.log(result.editorUrl);    // shareout.site/a/q4-review
-console.log(result.publishedUrl); // shareout.site/p/q4-review
+console.log(result.editorUrl);    // $ORIGIN_HOST/a/q4-review
+console.log(result.publishedUrl); // $ORIGIN_HOST/p/q4-review
 ```
 
 ### sdk.slides.open()
@@ -508,7 +513,7 @@ Publishing controls.
 ### publish.getUrl()
 
 ```typescript
-getUrl(): string  // shareout.site/p/{slug}
+getUrl(): string  // $ORIGIN_HOST/p/{slug}
 ```
 
 ### publish.setVisibility()
@@ -651,7 +656,7 @@ const link = await deck.links.create({
   gate: 'email',
   maxViews: 25,
 });
-// share link.url  →  https://shareout.site/p/<deck>?l=lnk_...
+// share link.url  →  $ORIGIN/p/<deck>?l=lnk_...
 ```
 
 **Viewer — pass the gate, then attribute the session:**

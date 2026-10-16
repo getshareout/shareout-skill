@@ -39,7 +39,7 @@ refused. Artifact REST mutations beyond publish (delete, collaborators, share, �
 Mint:
 
 ```bash
-curl -X POST https://shareout.site/v1/workspaces/{workspace_id}/agent-tokens \
+curl -X POST $ORIGIN/v1/workspaces/{workspace_id}/agent-tokens \
   -H "Authorization: Bearer <admin so_ token or session>" \
   -H "Content-Type: application/json" \
   -d '{ "name": "CI bot", "scopes": ["artifacts:publish", "data:write"] }'
@@ -51,14 +51,14 @@ Optional `expires_at` (ISO datetime) sets an expiry; omit for none.
 List (metadata only):
 
 ```bash
-curl https://shareout.site/v1/workspaces/{workspace_id}/agent-tokens \
+curl $ORIGIN/v1/workspaces/{workspace_id}/agent-tokens \
   -H "Authorization: Bearer <admin token>"
 ```
 
 Revoke (soft — the principal keeps its artifacts; mint a new token to re-enable):
 
 ```bash
-curl -X DELETE https://shareout.site/v1/workspaces/{workspace_id}/agent-tokens/{token_id} \
+curl -X DELETE $ORIGIN/v1/workspaces/{workspace_id}/agent-tokens/{token_id} \
   -H "Authorization: Bearer <admin token>"
 ```
 
@@ -67,7 +67,7 @@ curl -X DELETE https://shareout.site/v1/workspaces/{workspace_id}/agent-tokens/{
 Identical to a personal token — just send it as the Bearer credential:
 
 ```bash
-curl -X POST https://shareout.site/v1/publish \
+curl -X POST $ORIGIN/v1/publish \
   -H "Authorization: Bearer sot_…" \
   -H "Content-Type: application/json" \
   -d '{ "name": "Nightly dashboard", "workspace_id": "wsp_…", "files": { … } }'

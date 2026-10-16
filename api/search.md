@@ -19,7 +19,7 @@ Auth: any ShareOut credential works.
 
 | Param | Default | Notes |
 |-------|---------|-------|
-| `q` | *(required)* | The search text. Typo/gap tolerant — `revnue` matches "Revenue Report". Empty `q` returns recents. |
+| `q` | *(required)* | The search text. Typo/gap tolerant — `revnue` matches "Revenue Report". Send `q=` (empty) for recents; omitting `q` is a `400 VALIDATION_ERROR`. |
 | `groups` | all | Comma-separated subset of `artifacts,folders,datasets,connectors,people,schedules,crew,alerts`. |
 | `limit` | 10 | Max results **per group** (capped at 25). |
 | `workspace` | — | Workspace id to scope to (personal tokens only; Agent tokens are already scoped). |
@@ -66,7 +66,7 @@ Matches are tiered: exact title > prefix > word-boundary > substring > every-tok
 ## Example
 
 ```bash
-curl "https://shareout.site/v1/search?q=cpm&groups=artifacts,datasets&limit=5" \
+curl "$ORIGIN/v1/search?q=cpm&groups=artifacts,datasets&limit=5" \
   -H "Authorization: Bearer $SHAREOUT_TOKEN"
 ```
 
@@ -98,7 +98,7 @@ Response:
 }
 ```
 
-The engine runs **one focused agent turn** over a small candidate set from the same ranked search pool (`quickSearch`, up to 8 pages). Citations only ever point at artifacts the caller can already open. Runs on the workspace's own provider key like other assistant turns.
+The engine runs **one focused agent turn** over a small candidate set from the same ranked search pool (`quickSearch`, up to 8 pages). Citations are the pages the answer drew on — candidates it marks `[n]`, pages it read, and any page it found that the answer names — and only ever point at artifacts the caller can already open. Each turn is logged in the workspace AI usage ledger (`kind: ask_workspace`). Runs on the workspace's own provider key like other assistant turns.
 
 **When to use which:**
 - **`GET /v1/search`** — jump to a known name, browse recents, or list connectors/people/schedules.

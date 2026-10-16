@@ -9,7 +9,7 @@ $ORIGIN
 ```
 
 Resolve `$ORIGIN` from `~/.shareout/credentials` → `origin`, else env `SHAREOUT_ORIGIN` /
-`SHAREOUT_BASE_URL`. Hosted example: `https://shareout.site`. Self-host example:
+`SHAREOUT_BASE_URL`. Hosted example: `$ORIGIN`. Self-host example:
 `https://shareout.<account>.workers.dev` or your custom domain.
 
 All paths below are relative to `$ORIGIN` (e.g. `POST $ORIGIN/v1/publish`).
@@ -73,9 +73,13 @@ interface DataResponse<T> {
 {
   "success": false,
   "error": "Resource not found",
-  "code": "NOT_FOUND"
+  "code": "NOT_FOUND",
+  "request_id": "8a1f2c3d4e5f6a7b"
 }
 ```
+
+Optional fields: `hint` (what to do next), `docs`, `param`, `reason`, and on 5xx `support`.
+Full envelope and recovery steps: [errors.md](errors.md).
 
 ## Common Error Codes
 
@@ -89,12 +93,12 @@ interface DataResponse<T> {
 
 ## Cloudflare Protection
 
-ShareOut uses Cloudflare. Python `requests` triggers 1010 block.
+ShareOut uses Cloudflare. Some HTTP clients identify themselves with a user agent Cloudflare blocks before the request reaches ShareOut: you get `403` with the body `error code: 1010` (not a JSON error). Python `urllib` (`Python-urllib/3.x`) is the common one. `curl`, `requests`, `httpx` and Node `fetch` pass.
 
 **Solution:** Build payload in Python, pipe to curl:
 
 ```bash
-ORIGIN=$(python3 -c "import json,os; c=json.load(open(os.path.expanduser('~/.shareout/credentials'))); print(c.get('origin') or os.environ.get('SHAREOUT_ORIGIN','https://shareout.site'))")
+ORIGIN=$(python3 -c "import json,os; c=json.load(open(os.path.expanduser('~/.shareout/credentials'))); print(c.get('origin') or os.environ.get('SHAREOUT_ORIGIN','$ORIGIN'))")
 TOKEN=$(python3 -c "import json,os; print(json.load(open(os.path.expanduser('~/.shareout/credentials')))['token'])")
 python3 build_payload.py | curl -sS -X POST "$ORIGIN/v1/publish" \
   -H "Authorization: Bearer $TOKEN" \
@@ -106,8 +110,8 @@ python3 build_payload.py | curl -sS -X POST "$ORIGIN/v1/publish" \
 
 | Endpoint | Limit |
 |----------|-------|
-| Publish | 60/hour per user |
-| Data API | 1000/min per artifact |
+| Publish | 100/day per user |
+| Data API | No dedicated limiter today — don't rely on a specific number |
 | Email | 50/day per user, 10/day per artifact |
 | CORS Proxy | 100/min per artifact |
 

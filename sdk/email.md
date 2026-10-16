@@ -2,11 +2,11 @@
 
 Outbound email via Cloudflare Email Service. Access via `sdk.email`.
 
-Mail is sent server-side from verified ShareOut domains (e.g. `slug@artifacts.shareout.site`). The SDK exposes a **safe contact-form API** — visitors cannot send to arbitrary addresses.
+Mail is sent server-side from verified ShareOut domains (e.g. `slug@artifacts.example.com`). The SDK exposes a **safe contact-form API** — visitors cannot send to arbitrary addresses.
 
 ## Prerequisites
 
-1. **Cloudflare:** Onboard `shareout.site` under Email Sending
+1. **Cloudflare:** Onboard `$ORIGIN_HOST` under Email Sending
 2. **Owner:** Link account email (`POST /v1/auth/link-email`)
 3. **Owner (recommended):** Create artifact sender address (`POST /v1/artifacts/{id}/email`)
 4. **Artifact HTML:** Call `sdk.email.notifyOwner()` from submit handler
@@ -40,7 +40,7 @@ interface EmailSendResult {
 
 interface EmailStatus {
   enabled: boolean;           // EMAIL binding configured
-  from?: string;              // e.g. my-app@artifacts.shareout.site
+  from?: string;              // e.g. my-app@artifacts.example.com
   ownerEmailConfigured: boolean;
 }
 ```
@@ -48,7 +48,7 @@ interface EmailStatus {
 ## Examples
 
 ```javascript
-const sdk = new ShareOut();
+const sdk = await ShareOut.create();
 
 // Check availability
 const { enabled, ownerEmailConfigured, from } = await sdk.email.status();
@@ -75,8 +75,8 @@ await sdk.email.notifyOwner({
   <button type="submit">Send</button>
 </form>
 
-<script>
-  const sdk = new ShareOut();
+<script type="module">
+  const sdk = await ShareOut.create();
 
   document.getElementById('contact-form').addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -222,7 +222,7 @@ Templates support mustache-style `{{variable}}` interpolation:
 ### Template Examples
 
 ```javascript
-const sdk = new ShareOut();
+const sdk = await ShareOut.create();
 
 // Create account-level template
 const template = await sdk.templates.create({

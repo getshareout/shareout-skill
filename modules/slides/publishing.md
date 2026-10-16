@@ -1,16 +1,18 @@
 # Publishing
 
-Dual-artifact system: Editor mode for creating, Published mode for sharing.
+One artifact, two modes: Editor mode for creating, Published mode for sharing.
 
 ## Architecture
 
-Every presentation has two URLs:
+A presentation is stored **inside its host artifact** (the artifact whose page calls
+`sdk.slides.create()`); no separate artifacts are created. It has two URLs, both on the
+host artifact's slug:
 
 ```
 ┌────────────────────────────────────────────────────────────────┐
 │                                                                │
 │   EDITOR                              PUBLISHED                │
-│   shareout.site/a/{slug}             shareout.site/p/{slug}   │
+│   $ORIGIN_HOST/a/{slug}             $ORIGIN_HOST/p/{slug}   │
 │                                                                │
 │   ┌──────────────────┐               ┌──────────────────┐     │
 │   │                  │   real-time   │                  │     │
@@ -26,7 +28,7 @@ Every presentation has two URLs:
 
 ## Creating a Presentation
 
-Both artifacts created automatically:
+Both URLs are returned by `create`:
 
 ```javascript
 const result = await sdk.slides.create({
@@ -34,8 +36,8 @@ const result = await sdk.slides.create({
   visibility: 'public'
 });
 
-console.log(result.editorUrl);      // shareout.site/a/q4-review
-console.log(result.publishedUrl);   // shareout.site/p/q4-review
+console.log(result.editorUrl);      // $ORIGIN_HOST/a/q4-review
+console.log(result.publishedUrl);   // $ORIGIN_HOST/p/q4-review
 ```
 
 ### Response
@@ -43,10 +45,10 @@ console.log(result.publishedUrl);   // shareout.site/p/q4-review
 ```typescript
 interface CreateResult {
   id: string;                    // Presentation ID
-  editorUrl: string;             // shareout.site/a/{slug}
-  publishedUrl: string;          // shareout.site/p/{slug}
-  editorArtifactId: string;      // Editor artifact ID
-  publishedArtifactId: string;   // Published artifact ID
+  editorUrl: string;             // $ORIGIN_HOST/a/{slug}
+  publishedUrl: string;          // $ORIGIN_HOST/p/{slug}
+  editorArtifactId: string;      // Host artifact ID
+  publishedArtifactId: string;   // Host artifact ID (same artifact serves /p/{slug})
 }
 ```
 
@@ -202,15 +204,15 @@ presentation.publish.republish();
 ### Standard URLs
 
 ```
-shareout.site/a/{slug}     → Editor
-shareout.site/p/{slug}     → Published
+$ORIGIN_HOST/a/{slug}     → Editor
+$ORIGIN_HOST/p/{slug}     → Published
 ```
 
 ### Teams Subdomains
 
 ```
-{workspace}.shareout.site/a/{slug}   → Editor
-{workspace}.shareout.site/p/{slug}   → Published
+{workspace}.example.com/a/{slug}   → Editor
+{workspace}.example.com/p/{slug}   → Published
 ```
 
 ### Embed URLs
@@ -218,13 +220,13 @@ shareout.site/p/{slug}     → Published
 Embed artifacts in external websites via iframe:
 
 ```
-shareout.site/embed/{slug}   → Embeddable iframe
+$ORIGIN_HOST/embed/{slug}   → Embeddable iframe
 ```
 
 **Usage:**
 ```html
 <iframe
-  src="https://shareout.site/embed/my-presentation/"
+  src="$ORIGIN/embed/my-presentation/"
   width="100%"
   height="600"
   frameborder="0"
@@ -260,7 +262,7 @@ await fetch('/v1/artifacts/{id}', {
 
 ```javascript
 const url = presentation.publish.getUrl();
-// 'https://shareout.site/p/q4-review'
+// '$ORIGIN/p/q4-review'
 
 // Copy to clipboard
 await navigator.clipboard.writeText(url);
@@ -323,7 +325,7 @@ Add Open Graph tags to the presentation HTML `<head>`. ShareOut extracts them on
   <meta name="description" content="Quarterly business review...">
   <meta property="og:title" content="Q4 Review">
   <meta property="og:description" content="Quarterly business review...">
-  <meta property="og:image" content="https://shareout.site/t/art_abc123.webp">
+  <meta property="og:image" content="$ORIGIN/t/art_abc123.webp">
   <meta name="twitter:card" content="summary_large_image">
 </head>
 ```

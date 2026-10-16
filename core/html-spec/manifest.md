@@ -118,7 +118,7 @@ interface TableColumn {
     }
   }
   </script>
-  <script src="https://shareout.site/sdk/shareout.js"></script>
+  <script src="/sdk/shareout.js"></script>
 </head>
 ```
 

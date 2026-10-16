@@ -6,7 +6,7 @@ Think of it as a boutique studio intake: understand the *why* and *who* before t
 
 ## The flow
 
-1. **Check workspace knowledge first.** If the user is on a Teams workspace, pull its context files before anything else — house style, brand voice, data notes, and connectors live there and **override the defaults below**. Fetch `GET /v1/skill?workspace={slugOrId}` (Bearer token) for the bundled `workspace-context.md`, or read context files directly (`GET /v1/workspaces/{id}/context/{name}`, entry defaults to `index.md`). See [../team/workspace-context.md](../team/workspace-context.md). Personal/Pro users skip this.
+1. **Check workspace knowledge first.** If the artifact belongs to a workspace, pull its context files before anything else — house style, brand voice, data notes, and connectors live there and **override the defaults below**. Fetch `GET /v1/skill?workspace={slugOrId}` (Bearer token) for the bundled `workspace-context.md`, or read context files directly (`GET /v1/workspaces/{id}/context/{name}`, entry defaults to `index.md`). See [../team/workspace-context.md](../team/workspace-context.md). Personal (non-workspace) artifacts skip this.
 2. **Discovery — ask before building.** Establish why, who, what data, what-after-publish, and which design system. See [discovery.md](discovery.md). Don't generate until these are answered (or deliberately inferred — see *Adaptive depth*).
 3. **Design choice.** Pick the design language: ShareOut default, workspace house style, or a bespoke elevated look. See [design-choice.md](design-choice.md).
 4. **Lock the stack.** Clean, separated files (`index.html` + `styles.css` + `app.js` + assets) on a fixed, platform-safe combo — all references **relative** so it works when published. Do not improvise the architecture. See [stack.md](stack.md).
@@ -15,7 +15,7 @@ Think of it as a boutique studio intake: understand the *why* and *who* before t
 7. **Decide placement.** Which workspace, folder, and visibility. Personal artifacts default to no folder; Teams artifacts can be foldered. See [../api/folders.md](../api/folders.md) and [../team/folders.md](../team/folders.md).
 8. **Build from a skeleton.** Start from a known-good base, never a blank file. See [blueprint.md](blueprint.md).
 9. **Self-QA gate.** Run the pre-ship checklist. Do not publish until it passes. See [pre-ship.md](pre-ship.md).
-10. **Publish.** Pipe the payload to `curl` (Cloudflare blocks Python `requests`). See [Publishing](../SKILL.md#publishing) and [../api/artifacts.md](../api/artifacts.md). Share the one-line `editor_readiness` summary the publish returns.
+10. **Publish.** Pipe the payload to `curl` (Cloudflare blocks Python `urllib` with `403 error code: 1010`). See [Publishing](../SKILL.md#publishing) and [../api/artifacts.md](../api/artifacts.md). Share the one-line `editor_readiness` summary the publish returns.
 
 ## Decision record
 
@@ -41,7 +41,7 @@ When the user signals speed ("quick", "rough", "just"), collapse to the trivial 
 
 ## Why this beats freestyling
 
-- **Bindings over imperative DOM.** The skeleton wires data through `data-shareout-binding` / manifest sources — ShareOut's own declarative layer — instead of hand-rolled `getElementById` + SDK calls, which is the top source of runtime errors. See [stack.md](stack.md#js-reactivity-bindings-first).
+- **Bindings over imperative DOM.** The skeleton declares data with `data-shareout-binding` / manifest sources and paints it with one `paintBindings(sdk)` helper, instead of hand-rolled `getElementById` + SDK calls per element, which is the top source of runtime errors. Bindings are editor metadata — nothing renders them unless you call the helper. See [stack.md](stack.md#js-reactivity-bindings-first).
 - **Design system over invented CSS.** Starting from `shareout.css` + `.so-` classes means brand fonts, a warm palette, and harmonized spacing for free — the default look is "designed," not "auto-generated." See [design-choice.md](design-choice.md).
 - **Every state shipped.** The skeleton stubs loading / empty / error / success so the happy-path-only trap is closed before you start.
 

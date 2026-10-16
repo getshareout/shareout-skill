@@ -2,8 +2,9 @@
 
 Navigation manifest for agents. Load files based on user intent.
 
-**Instance URLs:** replace `https://shareout.site` with `$ORIGIN` from
+**Instance URLs:** every example uses `$ORIGIN` from
 `~/.shareout/credentials` → `origin`, or `SHAREOUT_ORIGIN` (see [SKILL.md](SKILL.md)).
+There is no public hosted default — resolve origin or deploy first.
 
 ## Quick Discovery
 
@@ -14,6 +15,7 @@ Navigation manifest for agents. Load files based on user intent.
 | Create a new artifact from scratch (build/make a page, dashboard, form, tool) | [creating/overview.md](creating/overview.md) | [creating/stack.md](creating/stack.md), [creating/blueprint.md](creating/blueprint.md) |
 | Build any artifact (spec/reference) | [SKILL.md](SKILL.md) | [core/html-spec/overview.md](core/html-spec/overview.md) |
 | Make an artifact load/render fast (no blank screen) | [patterns/performance.md](patterns/performance.md) | [sdk/overview.md](sdk/overview.md#readiness--loading), [api/jobs.md](api/jobs.md#querysnapshotconfig) |
+| Load a JS library (Plotly, D3, Chart.js…) — or add one the instance does not vendor yet | [patterns/performance.md](patterns/performance.md#libraries-load-from-the-instance-not-a-public-cdn) | [team/libraries.md](team/libraries.md#public-npm-libraries-vendor), [creating/stack.md](creating/stack.md#charts) |
 | Visual editor / live studio | [core/editor.md](core/editor.md) | [core/html-spec/overview.md](core/html-spec/overview.md) |
 | Workspace Home / Inspector / Deliver / Edit-Lite / setup checklist / pro search / notifications | [core/workspace-home.md](core/workspace-home.md) | [core/editor.md](core/editor.md), [team/workspace-assistant.md](team/workspace-assistant.md) |
 | Edit markdown/json/csv/txt in browser | [core/source-editor.md](core/source-editor.md) | [api/artifact-types.md](api/artifact-types.md) |
@@ -22,15 +24,16 @@ Navigation manifest for agents. Load files based on user intent.
 | Ask a question across workspace pages (⌘K answer mode) | [api/search.md](api/search.md#ask-your-workspace-answer-mode) | [core/workspace-home.md](core/workspace-home.md#pro-search-k) |
 | Store/reuse files (assets), folders, visibility, versioned deliverables, send a client a download link | [team/assets.md](team/assets.md) | [sdk/files.md](sdk/files.md) |
 | Embed a workspace file across pages (`sdk.files.getUrl`) | [sdk/files.md](sdk/files.md) | [team/assets.md](team/assets.md) |
-| Workspace Knowledge / learned library / Guidance | [team/knowledge.md](team/knowledge.md) | [team/workspace-context.md](team/workspace-context.md) |
+| Workspace Knowledge / search Files + pages with citations / knowledge graph (entities, relations, facts) / learned library / Guidance | [team/knowledge.md](team/knowledge.md) | [team/workspace-context.md](team/workspace-context.md) |
 | Email files to workspace / workspace file inbox / share from phone | [team/assets.md](team/assets.md#add-files-without-opening-assets) | [team/workspace-assistant.md](team/workspace-assistant.md#file-attachments), [team/admin-portal.md](team/admin-portal.md) |
 | Build a page from an uploaded/emailed file (assistant) | [team/workspace-assistant.md](team/workspace-assistant.md#file-attachments) | [team/assets.md](team/assets.md) |
 | Share folders/artifacts OUTSIDE the team (clients, partners, investors) | [team/external-sharing.md](team/external-sharing.md) | [team/SKILL.md](team/SKILL.md), [team/admin-portal.md](team/admin-portal.md) |
+| Share one folder with an outside person (expiry, client portal link, who opened what) | [team/external-sharing.md](team/external-sharing.md#share-with-one-person-api) | [team/folders.md](team/folders.md#who-can-see-a-folder) |
 | Scoped external API token (client reads only granted data) | [team/external-sharing.md](team/external-sharing.md#scoped-api-tokens) | [team/agent-tokens.md](team/agent-tokens.md) |
 | Private notes ABOUT a client (AI auto-reads + updates) | [team/external-sharing.md](team/external-sharing.md#client-notes-ai-memory-about-a-client) | [team/workspace-assistant.md](team/workspace-assistant.md) |
 | Style an artifact / make it on-brand | [modules/ui/overview.md](modules/ui/overview.md) | [modules/ui/classes.md](modules/ui/classes.md), [modules/ui/components.md](modules/ui/components.md) |
 | Make it look good / design taste / avoid a generic AI look | [modules/ui/taste.md](modules/ui/taste.md) | [modules/ui/overview.md](modules/ui/overview.md) |
-| Dashboard with data | [modules/dashboards/overview.md](modules/dashboards/overview.md) | [sdk/table.md](sdk/table.md), [patterns/dashboards.md](patterns/dashboards.md) |
+| Dashboard with data | [patterns/dashboards.md](patterns/dashboards.md) | [sdk/table.md](sdk/table.md), [sdk/json.md](sdk/json.md) (`modules/dashboards/` is an unshipped design spec — don't use `sdk.dashboards`) |
 | Editable spreadsheet grid in an artifact | [sdk/grid.md](sdk/grid.md) | [sdk/table.md](sdk/table.md), [integrations/google-sheets.md](integrations/google-sheets.md) |
 | Live Mixpanel / BigQuery / REST in HTML | [sdk/live-data.md](sdk/live-data.md) | [sdk/connections.md](sdk/connections.md), [integrations/overview.md](integrations/overview.md) |
 | Show viewers where data comes from / data sources drawer / how to replicate | [patterns/data-provenance.md](patterns/data-provenance.md) | [core/html-spec/manifest.md](core/html-spec/manifest.md#provenance-where-the-data-comes-from), [agents/crew.md](agents/crew.md) |
@@ -38,6 +41,7 @@ Navigation manifest for agents. Load files based on user intent.
 | Presentation/slides | [modules/slides/overview.md](modules/slides/overview.md) | [modules/slides/sdk-api.md](modules/slides/sdk-api.md) |
 | Deck viewer analytics / tracked links / who opened my deck | [modules/slides/analytics.md](modules/slides/analytics.md) | [modules/slides/sdk-api.md](modules/slides/sdk-api.md) |
 | Mobile/PWA app | [modules/mobile/overview.md](modules/mobile/overview.md) | [modules/mobile/pwa.md](modules/mobile/pwa.md) |
+| Connect Claude / ChatGPT (MCP connector, one URL + sign-in) | [integrations/mcp-connector.md](integrations/mcp-connector.md) | [auth.md](auth.md) |
 | Connect Google Sheets | [integrations/google-sheets.md](integrations/google-sheets.md) | [sdk/overview.md](sdk/overview.md) |
 | Connect Google Analytics | [integrations/google-analytics.md](integrations/google-analytics.md) | [patterns/dashboards.md](patterns/dashboards.md) |
 | Connect Google Ads / Facebook Ads (BYO token) | [integrations/google-ads.md](integrations/google-ads.md) | [integrations/facebook-ads.md](integrations/facebook-ads.md), [team/workspace-connections.md](team/workspace-connections.md) |
@@ -51,6 +55,9 @@ Navigation manifest for agents. Load files based on user intent.
 | Link multiple Google accounts on Home | [auth.md](auth.md#linked-accounts) | [core/workspace-home.md](core/workspace-home.md) |
 | Publish governance (gate public) | [team/publish-governance.md](team/publish-governance.md) | [modules/_shared/publishing.md](modules/_shared/publishing.md), [team/api.md](team/api.md) |
 | Skill marketplace (publish, attach skills) | [team/skill-marketplace.md](team/skill-marketplace.md) | [team/workspace-context.md](team/workspace-context.md), [agents/overview.md](agents/overview.md) |
+| Save a playbook / convention as a reusable team skill | [team/skill-marketplace.md](team/skill-marketplace.md#publish-a-skill) | `POST /v1/workspaces/{id}/skills` |
+| Install a workspace's skills into Claude Code / Cursor | [team/skill-marketplace.md](team/skill-marketplace.md#install-into-an-agent) | `GET /v1/skills/install.sh` |
+| Who may edit a skill / review proposed changes | [team/skill-marketplace.md](team/skill-marketplace.md#who-can-change-a-skill) | `PUT /v1/skills/{id}/policy` |
 | Official Recommended by ShareOut skills | [team/skill-marketplace.md](team/skill-marketplace.md#official-skills-recommended-by-shareout) | `GET /v1/skills/recommended` |
 | Connect Shopify | [integrations/shopify.md](integrations/shopify.md) | [integrations/overview.md](integrations/overview.md) |
 | Each viewer sees only their own data | [core/access-policy.md](core/access-policy.md) | [sdk/table.md](sdk/table.md), [modules/_shared/permissions.md](modules/_shared/permissions.md) |
@@ -58,6 +65,9 @@ Navigation manifest for agents. Load files based on user intent.
 | Save simple state (theme, filters, flags) | [sdk/json.md](sdk/json.md) | [core/html-spec/manifest.md](core/html-spec/manifest.md) |
 | Add comments / threaded discussion | [sdk/comments.md](sdk/comments.md) | [modules/_shared/permissions.md](modules/_shared/permissions.md) |
 | Comment action items (assign to person, due date) | [sdk/comments.md](sdk/comments.md#action-items) | [team/activity-feed.md](team/activity-feed.md) |
+| Review a page: resolve/assign comments, approve a version | [sdk/comments.md](sdk/comments.md#review-mode) | [api/artifacts.md](api/artifacts.md#versions--restore) |
+| Version history, change notes, restore an older version | [api/artifacts.md](api/artifacts.md#versions--restore) | [integrations/mcp-connector.md](integrations/mcp-connector.md) |
+| Multi-page site (several HTML files linked together) | [api/artifacts.md](api/artifacts.md#multi-page-sites-several-html-files) | [core/html-spec/pages.md](core/html-spec/pages.md#multiple-html-files-sites) |
 | Real-time collaboration | [sdk/realtime.md](sdk/realtime.md) | [modules/_shared/permissions.md](modules/_shared/permissions.md) |
 | File uploads | [sdk/blobs.md](sdk/blobs.md) | [patterns/uploads.md](patterns/uploads.md) |
 | AI chat agent | [agents/overview.md](agents/overview.md) | [agents/context.md](agents/context.md) |
@@ -82,6 +92,7 @@ Navigation manifest for agents. Load files based on user intent.
 | Internal workspace visibility | [team/SKILL.md](team/SKILL.md#workspace-visibility) | [modules/_shared/permissions.md](modules/_shared/permissions.md) |
 | Workspace membership policy | [team/api.md](team/api.md#workspace-membership-policy) | [team/SKILL.md](team/SKILL.md#workspace-membership-policy) |
 | Workspace subdomain | [team/subdomain.md](team/subdomain.md) | [deploy/cloudflare.md](deploy/cloudflare.md) |
+| Workspace SSO (Okta / OIDC) | [team/sso.md](team/sso.md) | [deploy/cloudflare.md](deploy/cloudflare.md) |
 | Workspace house style/context | [team/workspace-context.md](team/workspace-context.md) | [team/SKILL.md](team/SKILL.md#workspace-context-files) |
 | Workspace connectors (shared / per-user tokens) | [team/workspace-connections.md](team/workspace-connections.md) | [team/api.md](team/api.md#workspace-connections) |
 | Deliver to multiple destinations | [api/destinations.md](api/destinations.md) | [api/jobs.md](api/jobs.md) |
@@ -92,7 +103,7 @@ Navigation manifest for agents. Load files based on user intent.
 | Raise a support ticket / bug report (agent or app) | [api/support.md](api/support.md) | [api/overview.md](api/overview.md) |
 | REST API reference | [api/overview.md](api/overview.md) | [api/artifacts.md](api/artifacts.md) |
 | Publish CSV/Markdown/JSON | [api/artifact-types.md](api/artifact-types.md) | [SKILL.md](SKILL.md) |
-| Link preview when sharing (Slack, WhatsApp) | [modules/_shared/publishing.md](modules/_shared/publishing.md#link-previews-slack-whatsapp-imessage) | [SKILL.md](SKILL.md#thumbnails) |
+| Link preview when sharing (Slack, WhatsApp) | [modules/_shared/publishing.md](modules/_shared/publishing.md#link-previews-slack-whatsapp-imessage) | [api/artifacts.md](api/artifacts.md#put-v1artifactsidthumbnail) |
 | Authentication | [auth.md](auth.md) | [api/overview.md](api/overview.md) |
 | Self-serve API token (avatar menu / /v1/me/tokens) | [auth.md](auth.md#self-serve-api-tokens) | [api/overview.md](api/overview.md) |
 | Request access to a private page | [modules/_shared/permissions.md](modules/_shared/permissions.md#access-requests-private--workspace-artifacts) | [core/access-policy.md](core/access-policy.md) |
@@ -109,7 +120,8 @@ ShareOutSkill/
 ├── auth.md                     # Token format, credentials, API auth
 ├── deploy/                     # Install on Cloudflare (agents: start here to self-host)
 │   ├── SKILL.md                # Deploy protocol + success criteria
-│   └── cloudflare.md           # CF resources, domain/DNS, companion skills
+│   ├── cloudflare.md           # CF resources, domain/DNS, companion skills
+│   └── configure.md            # Configure a running instance (AI, email, features)
 │
 ├── creating/                   # End-to-end new-artifact build flow (start here to build)
 │   ├── overview.md             # The orchestrator: discovery → design → stack → build → QA
@@ -123,6 +135,7 @@ ShareOutSkill/
 │   ├── SKILL.md                # Workspace entry point (no plan gates on self-host)
 │   ├── INDEX.md                # Workspace intent router
 │   ├── api.md                  # Workspace REST endpoints
+│   ├── sso.md                  # Workspace SSO (Okta / OIDC)
 │   ├── subdomain.md            # Workspace subdomain behavior
 │   ├── workspace-context.md    # Workspace house-style context files
 │   ├── workspace-connections.md  # Shared vs per-user workspace connectors
@@ -133,6 +146,12 @@ ShareOutSkill/
 │   ├── assets.md                 # Asset library — folders, visibility, deliverables, gated links
 │   ├── knowledge.md              # Workspace Knowledge — learned library, Guidance, consolidator
 │   ├── external-sharing.md       # Share OUTSIDE the team — clients, grants, /shared portal, scoped tokens
+│   ├── admin-portal.md           # Admin lens — members, roles, governance
+│   ├── agent-tokens.md           # Workspace Agent tokens (sot_ service accounts)
+│   ├── folders.md                # Team Space folders
+│   ├── workspace-tables.md       # Tables shared across a workspace's artifacts
+│   ├── libraries.md              # Workspace Library — private versioned JS modules
+│   └── catalog.md                # Data Catalog — lineage, glossary
 │
 ├── core/                       # Mandatory specs (every artifact)
 │   ├── README.md               # Core overview
@@ -160,7 +179,8 @@ ShareOutSkill/
 │   ├── python.md               # sdk.python - run Python in the browser
 │   ├── connections.md          # sdk.connection - REST + materialize
 │   ├── live-data.md            # Mixpanel/BigQuery/live queries in artifacts (READ FIRST)
-│   └── datasets.md             # sdk.dataset - read materialized extracts
+│   ├── datasets.md             # sdk.dataset - read materialized extracts
+│   └── libraries.md            # so.lib - import workspace library modules
 │
 ├── api/                        # REST API reference
 │   ├── overview.md             # Base URL, auth, rate limits
@@ -175,6 +195,9 @@ ShareOutSkill/
 │   ├── destinations.md         # Delivery layer (slack/email/discord/webhook)
 │   ├── templates.md            # /v1/templates endpoints
 │   ├── webhooks.md             # Webhook payloads
+│   ├── tests.md                # Artifact Tests — safety nets on change
+│   ├── features.md             # /v1/features — per-workspace feature flags
+│   ├── support.md              # /v1/support/tickets — support tickets
 │   └── errors.md               # Error codes
 │
 ├── integrations/               # External services
@@ -187,6 +210,8 @@ ShareOutSkill/
 │   ├── shopify.md              # Shopify proxy
 │   ├── tiendanube.md           # Tienda Nube proxy
 │   ├── cors-proxy.md           # Generic CORS proxy
+│   ├── inbound-email.md        # Per-artifact inbound email address
+│   ├── mcp-connector.md        # ShareOut as a remote MCP server (Claude, ChatGPT)
 │   └── github.md               # GitHub backup/export
 │
 ├── agents/                     # AI agent integration
@@ -214,21 +239,31 @@ ShareOutSkill/
 │   │   ├── overview.md         # Entry, quick start
 │   │   ├── sdk-api.md          # Slide SDK methods
 │   │   ├── analytics.md        # Viewer analytics, tracked links, open alerts
-│   │   ├── presenter.md        # Presenter mode
+│   │   ├── presenter-mode.md   # Presenter mode
+│   │   ├── permissions.md      # Presentation + per-slide permissions
+│   │   ├── publishing.md       # Editor vs published deck
+│   │   ├── versions.md         # Version history
 │   │   ├── data-model.md       # Y.js structure
+│   │   ├── sdk-authoring-spec.md   # Design spec: higher-level authoring API (roadmap)
+│   │   ├── experience-roadmap.md   # Roadmap (not agent guidance)
+│   │   ├── b2b-expansion.md        # Roadmap (not agent guidance)
 │   │   └── design/             # Visual guidelines
 │   │
-│   ├── dashboards/             # Dashboard module
+│   ├── dashboards/             # UNSHIPPED design spec — no backend; use patterns/dashboards.md
 │   │   ├── overview.md         # Entry, quick start
-│   │   ├── sdk-api.md          # Dashboard SDK methods
-│   │   ├── widgets.md          # Widget reference
+│   │   ├── sdk-api.md          # Dashboard SDK methods (not implemented)
 │   │   ├── data-model.md       # Y.js structure
-│   │   └── design/             # Visual guidelines
+│   │   ├── permissions.md      # Permissions model
+│   │   ├── presenter-mode.md   # Presenter mode
+│   │   ├── publishing.md       # Editor vs published
+│   │   ├── versions.md         # Version history
+│   │   └── design/             # Visual guidelines (still applicable; widgets.md = widget reference)
 │   │
 │   └── mobile/                 # Mobile/PWA module
 │       ├── overview.md         # Entry, quick start
 │       ├── sdk-api.md          # Mobile SDK methods
 │       ├── pwa.md              # PWA features
+│       ├── publishing.md       # Publish with PWA via REST
 │       └── design/             # Visual guidelines
 │
 └── patterns/                   # Copy-paste starters
@@ -238,7 +273,7 @@ ShareOutSkill/
     ├── dashboards.md           # Dashboard patterns
     ├── uploads.md              # File upload patterns
     ├── data-provenance.md      # "Where does this data come from?" drawer + badges
-    └── performance.md          # Instant first paint, no blank screen
+    └── performance.md          # Instant first paint, /vendor libraries, no blank screen
 ```
 
 ## Loading Guidance
@@ -253,10 +288,11 @@ Quick Discovery above maps any single intent to its files. Two flows need a spec
 5. [creating/pre-ship.md](creating/pre-ship.md) → Self-QA gate before publish
 
 ### Install / Deploy (self-host)
-1. [deploy/SKILL.md](deploy/SKILL.md) → success criteria, Path A/B
-2. Load companion skills: wrangler, cloudflare, workers-best-practices, durable-objects
-3. [deploy/cloudflare.md](deploy/cloudflare.md) → D1/R2/KV/DO, domain, email
-4. Smoke + credentials with `origin` → then return to [SKILL.md](SKILL.md) for product work
+1. [deploy/SKILL.md](deploy/SKILL.md) → Path 0 if no Cloudflare account, then Path A/B
+2. Run `npm run deploy` (never bare `wrangler deploy` on placeholders)
+3. Load companion skills: wrangler, cloudflare, workers-best-practices, durable-objects
+4. [deploy/cloudflare.md](deploy/cloudflare.md) → D1/R2/KV/DO, domain, email
+5. Smoke + credentials with `origin` → then return to [SKILL.md](SKILL.md) for product work
 
 ### Workspace admin work
 1. [SKILL.md](SKILL.md) → Base rules + `$ORIGIN`

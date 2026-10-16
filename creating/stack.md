@@ -42,10 +42,10 @@ Artifacts serve under the **`/a/{slug}/` prefix**, so **every internal reference
 <!-- index.html -->
 <head>
   <script type="shareout/manifest"> … </script>   <!-- first: declares all data sources -->
-  <link rel="stylesheet" href="https://shareout.site/sdk/shareout.css">  <!-- absolute OK: the SDK origin -->
+  <link rel="stylesheet" href="/sdk/shareout.css">  <!-- ROOT-RELATIVE: this host serves the SDK -->
   <link rel="stylesheet" href="styles.css">         <!-- RELATIVE sibling → /a/{slug}/styles.css -->
-  <script src="https://shareout.site/sdk/shareout-ui.js" defer></script>
-  <script src="https://shareout.site/sdk/shareout.js"></script>
+  <script src="/sdk/shareout-ui.js" defer></script>
+  <script src="/sdk/shareout.js"></script>
   <style> :root { /* customer layer: override --so-* tokens here */ } </style>
 </head>
 <body>
@@ -56,7 +56,7 @@ Artifacts serve under the **`/a/{slug}/` prefix**, so **every internal reference
 </body>
 ```
 
-The only absolute URLs that belong in an artifact are the ShareOut SDK/CSS on `shareout.site` and any deliberately-external resource (with the moderation caveat below).
+The only absolute URLs that belong in an artifact are the ShareOut SDK/CSS on `$ORIGIN_HOST` and any deliberately-external resource (with the moderation caveat below).
 
 **Local sibling files are NOT external CDN scripts** — they load from the artifact's own origin, so splitting JS/CSS into local files does **not** trigger the CSP allowlist or the moderation private-flag (those apply only to *third-party CDN* `<script>` tags and oversized inline JSON, and only on public pages — see the visibility note above). Clean separation is both best practice and moderation-safe.
 
@@ -97,12 +97,14 @@ Folded from premium frontend practice, kept dependency-free:
 
 ## JS reactivity (bindings-first)
 
-This is the single biggest bug-killer. ShareOut already ships a validated declarative reactive layer — use it instead of hand-wiring the DOM.
+This is the single biggest bug-killer. Declare data on the DOM with ShareOut's binding attributes and paint it with one shared helper, instead of hand-wiring element by element.
+
+**Bindings don't render themselves.** `data-shareout-binding` / `-template` / `-chart` are editor metadata (data panel, Inspect, Format control, `editor_readiness`). Neither the served SDK nor the editor paints them, so a page that only declares bindings shows its placeholders (`$0`, empty lists) to every viewer. Paint them with the `paintBindings(sdk)` helper from [../core/html-spec/bindings.md](../core/html-spec/bindings.md#rendering-for-viewers) — call it after init and after each write.
 
 **Decision tree:**
 
-1. **Declarative bindings first.** Bind data to the DOM with `data-shareout-binding`, repeating content with `data-shareout-template`, charts with `data-shareout-chart`, and declare every source in the manifest. The runtime keeps them in sync. See [../core/html-spec/bindings.md](../core/html-spec/bindings.md) and [../core/html-spec/templates.md](../core/html-spec/templates.md).
-2. **Vanilla JS for glue only** — event handlers, calling SDK writes, branching. Not for re-rendering data into the DOM.
+1. **Declarative bindings first.** Mark data on the DOM with `data-shareout-binding`, repeating content with `data-shareout-template`, charts with `data-shareout-chart`, and declare every source in the manifest. Paint them with `paintBindings(sdk)` (re-run after writes); draw charts with Plotly from the bound rows. See [../core/html-spec/bindings.md](../core/html-spec/bindings.md) and [../core/html-spec/templates.md](../core/html-spec/templates.md).
+2. **Vanilla JS for glue** — event handlers, calling SDK writes, branching, then `paintBindings(sdk)`. Not for one-off `getElementById` painting of unannotated elements.
 3. **Alpine.js for genuinely complex interactive state** (multi-step wizards, heavy client-side filtering/derived UI). Load it from an **allowlisted CDN**: `<script src="https://cdn.jsdelivr.net/npm/alpinejs@3" defer></script>` (jsDelivr, unpkg, cdnjs all pass the sandbox CSP and publish fine on public). Do **not** paste Alpine's minified source inline — a single long minified line trips the publish-time obfuscation heuristic and can hold the artifact private.
 
 The anti-pattern that causes most "SDK errors":
@@ -112,7 +114,7 @@ The anti-pattern that causes most "SDK errors":
 <span id="rev"></span>
 <script>document.getElementById('rev').textContent = await sdk.json.get('metrics.revenue')</script>
 
-<!-- RIGHT: declarative, editor-aware, auto-synced -->
+<!-- RIGHT: declared for the editor, painted by paintBindings(sdk) for viewers -->
 <span data-shareout-binding="json:metrics.revenue" data-shareout-format="currency">$0</span>
 ```
 
@@ -121,7 +123,7 @@ The anti-pattern that causes most "SDK errors":
 The quick card. Depth in [../sdk/overview.md](../sdk/overview.md).
 
 - **Init with `await ShareOut.create()`**, not `new ShareOut()` — the awaited form readies the embedded Bearer token.
-- **Prefer bindings over imperative reads.** Reach for `sdk.json.get` / `sdk.table().exec()` only for logic, not for painting data onto the page.
+- **Prefer bindings over ad-hoc reads.** Paint bound elements through `paintBindings(sdk)`; reach for `sdk.json.get` / `sdk.table().exec()` directly for logic, `computed:` values and charts.
 - **Declare every store in the manifest** before you use it — `sdk.json` keys, `sdk.table()` names, `sdk.connection()` names. An undeclared store is a common runtime failure and breaks editor preview. Manifest rules: [../core/html-spec/manifest.md](../core/html-spec/manifest.md).
 - **Editor / preview mode does no network.** The visual editor resolves all reads (including connector queries) from `sources.*.default`. Give every source `default` sample data so a data-gated artifact still renders and stays editable.
 - **Wrap data calls in try/catch** with a graceful fallback into the error state — never let a rejected promise blank the page.
@@ -129,6 +131,7 @@ The quick card. Depth in [../sdk/overview.md](../sdk/overview.md).
 
 ## Charts
 
+- **Load the library from the instance, not a public CDN:** `/vendor/<pkg>@<version>/<file>` (e.g. `/vendor/plotly.js-dist-min@2.35.2/plotly.min.js`). Same bytes, edge-cached, no extra handshake — see [../patterns/performance.md](../patterns/performance.md). Known CDN URLs (`cdn.plot.ly`, `d3js.org`, jsDelivr/unpkg npm paths) are rewritten to it at publish, so an existing artifact gets this for free.
 - **Interactive, view-only artifact:** `<canvas>` charting (e.g. Chart.js) is fine.
 - **Delivered by screenshot** (Slack / PDF / thumbnail / email): use **SVG** charts (Plotly). Server-side capture renders `<canvas>` blank. If unsure whether it'll be screenshotted, default to SVG.
 
@@ -140,7 +143,7 @@ The quick card. Depth in [../sdk/overview.md](../sdk/overview.md).
 
 ## Elevated motion (opt-in)
 
-If the user explicitly wants scroll-driven storytelling or physics-grade motion (a marketing site, a showcase), heavier libraries (GSAP, Lenis) are allowed. Load them from an **allowlisted CDN** (cdnjs, jsDelivr, unpkg) — those hosts pass the sandbox CSP and publish fine on public. Do **not** inline their minified source (a long minified line trips the obfuscation heuristic → held private). Never reach for this by default — bloat and slower first paint.
+If the user explicitly wants scroll-driven storytelling or physics-grade motion (a marketing site, a showcase), heavier libraries (GSAP, Lenis) are allowed. Load them from the instance (`/vendor/gsap@3/dist/gsap.min.js`) or an **allowlisted CDN** (cdnjs, jsDelivr, unpkg) — those hosts pass the sandbox CSP and publish fine on public. Do **not** inline their minified source (a long minified line trips the obfuscation heuristic → held private). Never reach for this by default — bloat and slower first paint.
 
 ## Related
 

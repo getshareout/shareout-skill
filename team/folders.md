@@ -1,6 +1,6 @@
 # Team Space Folders
 
-**Team Space folders** are the shared folder structure inside a Teams workspace. Every workspace member can see them and organize artifacts within them; only workspace **admins** and **owners** can create, rename, or delete folders.
+**Team Space folders** are the shared folder structure inside a Teams workspace. Every workspace member can see them and organize artifacts within them. Workspace **admins** and **owners** create, rename, and delete any folder. **Members** create folders and rename/delete the ones they created, while the workspace setting `members_can_create_folders` is on (the default — see [api.md](api.md#workspace-settings)).
 
 > **Personal folders** (outside any workspace) are documented in [../api/folders.md](../api/folders.md).
 
@@ -8,10 +8,10 @@
 
 | Scope | Who sees it | Who creates folders | API prefix |
 |-------|-------------|---------------------|------------|
-| **Team Space** | All workspace members | `owner` / `admin` only | `/v1/workspaces/{id}/folders` |
+| **Team Space** | All workspace members | `owner` / `admin`; `member` too unless `members_can_create_folders` is off | `/v1/workspaces/{id}/folders` |
 | **Personal** | Owner (+ linked accounts) | Owner | `/v1/folders` |
 
-The home UI labels workspace folders **"Team Space · {workspace name}"**. Members who try to create a Team Space folder receive `403 ADMIN_REQUIRED`.
+The home UI labels workspace folders **"Team Space · {workspace name}"**. A member gets `403 ADMIN_REQUIRED` when creating a folder while `members_can_create_folders` is off, or when changing a folder someone else created. The list response's `can_create` says whether the caller may create folders, so check it instead of trying.
 
 ## Endpoints
 
@@ -25,7 +25,7 @@ GET    /v1/workspaces/{workspaceId}/folders/by-path/{path}
 POST   /v1/workspaces/{workspaceId}/artifacts/{artifactId}/move
 ```
 
-All routes require workspace membership. Create/delete/patch require `owner` or `admin`.
+All routes require workspace membership. `PATCH`/`DELETE` on a folder: `owner`/`admin` for any folder; a `member` only for folders they created, and only while `members_can_create_folders` is on.
 
 ## List folders
 
@@ -34,7 +34,7 @@ GET /v1/workspaces/{workspaceId}/folders?parent_id={folderId}
 Authorization: Bearer {token}
 ```
 
-Omit `parent_id` for top-level folders. Response includes `artifact_count`, `subfolder_count`, `visibility`, and `parent_id` for nesting.
+Omit `parent_id` for top-level folders. Response: `{ folders, can_create }` — each folder has `artifact_count`, `subfolder_count`, `visibility`, and `parent_id` for nesting; `can_create` is whether the caller may create folders here.
 
 ## Create folder
 
@@ -55,6 +55,7 @@ Content-Type: application/json
 
 - `visibility`: `inherit` (default), `private`, `workspace`, `public` — controls who sees artifacts filed here when artifact visibility inherits from folder.
 - Slugs are unique per parent level within the workspace.
+- Response: `201` with the folder object (same shape as `GET .../folders/{folderId}`). Admins/owners always; members while `members_can_create_folders` is on (`403 ADMIN_REQUIRED` otherwise).
 - `readme`: optional markdown **folder guide** — see below.
 
 ## Folder guide (README) — the instruction surface for agents
@@ -75,7 +76,15 @@ Content-Type: application/json
 
 - `readme` is freeform markdown. Send `""` to clear it.
 - `GET /v1/workspaces/{workspaceId}/folders/{folderId}` returns `readme`.
-- Team Space guides are set by `owner`/`admin`; personal folder guides by the owner (`PATCH /v1/folders/{id}`).
+- Team Space guides are set by `owner`/`admin`, or by the member who created the folder while `members_can_create_folders` is on; personal folder guides by the owner (`PATCH /v1/folders/{id}`).
+
+## Who can see a folder
+
+- **Visibility:** a folder's `visibility` of `inherit` takes the nearest ancestor that sets one; with none set it means the whole workspace. `private` / `workspace` / `public` apply to artifacts filed there that inherit from their folder.
+- **External access:** grants on a folder (to a client org or one outside person) cover its whole subtree, and a grant on an ancestor reaches this folder too. Expired grants no longer count.
+- **In Home:** an open Team Space folder shows a who-can-see pill (Private / Workspace / Public / Shared externally). It opens **Who has access**: the visibility picker, the folder's grants and the ones it inherits, **Share with a person** (view/comment, optional 7/30/90-day expiry), **Who opened what**, and **Copy client portal link** (`/shared?folder=<id>`). The folder's managers (admins, or the member who created it while members manage their folders) share and revoke there.
+- **API:** list a folder's grants with `GET /v1/workspaces/{workspaceId}/grants?resource_type=folder&resource_id={folderId}`, share with `POST …/share-person`, revoke with `DELETE …/grants/{grantId}`, and see who opened what with `GET /v1/workspaces/{workspaceId}/folders/{folderId}/activity` — see [external-sharing.md](external-sharing.md#share-with-one-person-api).
+- **MCP:** `folder_access`, `share_with_person`, `revoke_share` and `folder_activity` do the same from Claude or ChatGPT — see [../integrations/mcp-connector.md](../integrations/mcp-connector.md).
 
 ## Move artifact into a folder
 
@@ -95,8 +104,8 @@ Folder slugs appear in subdomain and namespaced URLs:
 
 | Pattern | Example |
 |---------|---------|
-| `{ws}.shareout.site/{folder}/{artifact-slug}` | `acme.shareout.site/q1-reports/sales-dashboard` |
-| `shareout.site/@{ws}/{folder}/{artifact-slug}` | `shareout.site/@acme/q1-reports/sales-dashboard` |
+| `{ws}.example.com/{folder}/{artifact-slug}` | `acme.example.com/q1-reports/sales-dashboard` |
+| `$ORIGIN_HOST/@{ws}/{folder}/{artifact-slug}` | `$ORIGIN_HOST/@acme/q1-reports/sales-dashboard` |
 
 Artifact slugs in these URLs are the **human slug** (`display_slug`), unique per workspace. See [../api/artifacts.md](../api/artifacts.md#slugs-human-vs-routing).
 

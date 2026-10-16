@@ -4,7 +4,7 @@ Common publishing workflow across all ShareOut modules.
 
 ## URL Model (HTML artifacts)
 
-Every HTML artifact on the **trusted shell** (`shareout.site` or workspace subdomain) uses:
+Every HTML artifact on the **trusted shell** (`$ORIGIN_HOST` or workspace subdomain) uses:
 
 | URL Pattern | Purpose | Access |
 |-------------|---------|--------|
@@ -27,9 +27,9 @@ Visitors browse the shell URL; they do not need to know the content URL.
 |---------|----------------|
 | Auto TL;DR + tags | Background on every HTML publish — fills empty `description` and `artifact_tags` for search/cards |
 | Link previews (OG tags) | Shell URL (`/a/` or `/p/`) — crawlers never execute iframe JS |
-| Session cookies | `shareout.site` only — not visible to artifact JS |
+| Session cookies | `$ORIGIN_HOST` only — not visible to artifact JS |
 | Your HTML/CSS/JS | Content host iframe |
-| SDK script tags | Works via `https://shareout.site/sdk/…` or relative `/sdk/…` on content host |
+| SDK script tags | Use relative `/sdk/…` — served on the app origin and every content host |
 
 See [sdk/live-data.md](../../sdk/live-data.md) for sandbox auth and data access rules.
 
@@ -57,7 +57,7 @@ await sdk.setVisibility('workspace');
 
 > **Launch note:** where open visibility is disabled (`OPEN_VISIBILITY_DISABLED`), `public` is coerced to `private`; only the "closed" states `private` and `workspace` are selectable.
 
-**Paid visibility gate.** Public visibility requires a **paid plan** or a **paid Teams workspace** — free personal accounts are limited to `private` and `workspace`. Without entitlement, `POST /v1/publish` returns a `notice` and `PATCH /v1/artifacts/{id}` returns `VISIBILITY_HELD` instead of silently downgrading.
+**Visibility is an instance-policy question, not a billing one — there is no paid tier in this build.** When an operator has disabled open visibility instance-wide (`OPEN_VISIBILITY_DISABLED`) and the publisher isn't in the instance's public rollout, `POST /v1/publish` returns a `notice` and `PATCH /v1/artifacts/{id}` returns `VISIBILITY_HELD` instead of silently downgrading.
 
 Transitioning **into** `public` also runs an automated content-safety check. If it isn't cleared instantly, the artifact stays `private` and the response carries a `moderation` object (publish) or `code: "MODERATION_HELD"` + `reason` (PATCH 202) — but it is re-checked automatically within the hour and auto-restored to public once it clears, so tell the user it's "under review, publishing shortly" rather than announcing a live link.
 
@@ -83,13 +83,13 @@ See [api/artifacts.md](../../api/artifacts.md#patch-v1artifactsid) for the full 
 ```javascript
 // Publish via REST (agents) or POST /v1/artifacts/{id}/editor/publish (studio)
 // Share URL from the publish response:
-//   workspace artifacts -> deployment.subdomain_url  (https://{workspace}.shareout.site/{slug}/)
-//   personal artifacts  -> deployment.url            (https://shareout.site/a/{slug}/)
+//   workspace artifacts -> deployment.subdomain_url  (https://{workspace}.example.com/{slug}/)
+//   personal artifacts  -> deployment.url            ($ORIGIN/a/{slug}/)
 // Don't surface the apex /a/ URL for workspace artifacts — it's an internal routing key.
 const publishedUrl = deployment.subdomain_url || deployment.url;
 
 // Open the visual studio (human collaborators):
-const studioUrl = `https://shareout.site/a/${slug}/edit`;
+const studioUrl = `$ORIGIN/a/${slug}/edit`;
 ```
 
 ## Studio vs Viewer
@@ -166,13 +166,13 @@ Add Open Graph tags to the entrypoint `<head>`. ShareOut **extracts these on eve
   <!-- Link preview (Open Graph) -->
   <meta property="og:title" content="Q4 Sales Review">
   <meta property="og:description" content="Weekly metrics for the sales team">
-  <meta property="og:image" content="https://shareout.site/v1/data/.../blobs/hero.png">
+  <meta property="og:image" content="$ORIGIN/v1/data/.../blobs/hero.png">
 
   <!-- X / Twitter -->
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="Q4 Sales Review">
   <meta name="twitter:description" content="Weekly metrics for the sales team">
-  <meta name="twitter:image" content="https://shareout.site/v1/data/.../blobs/hero.png">
+  <meta name="twitter:image" content="$ORIGIN/v1/data/.../blobs/hero.png">
 </head>
 ```
 
@@ -203,7 +203,7 @@ Authorization: Bearer {token}
 Content-Type: image/webp
 ```
 
-Serve at `GET /t/{artifact_id}.webp` (also used as preview image). See [SKILL.md § Thumbnails](../../SKILL.md#thumbnails).
+Serve at `GET /t/{artifact_id}.webp` (also used as preview image). API: [PUT /v1/artifacts/{id}/thumbnail](../../api/artifacts.md#put-v1artifactsidthumbnail).
 
 ### Option 4: Override via API
 
@@ -217,7 +217,7 @@ Content-Type: application/json
 {
   "social_title": "Q4 Sales Review",
   "social_description": "Weekly metrics for the sales team",
-  "social_image_url": "https://shareout.site/t/art_abc123.webp"
+  "social_image_url": "$ORIGIN/t/art_abc123.webp"
 }
 ```
 
@@ -237,7 +237,7 @@ Content-Type: application/json
 
 ## Monitoring & stats
 
-After publish, owners on **Pro or Teams** can track engagement:
+After publish, owners can track engagement — no tier requirement:
 
 | Surface | What it shows |
 | --- | --- |
@@ -251,6 +251,6 @@ API: `GET /v1/home/analytics?range=` and `GET /v1/artifacts/{id}/analytics`. See
 
 - [Permissions](permissions.md) - Who can publish
 - [Versions](versions.md) - Publish creates version
-- [SKILL.md § Thumbnails](../../SKILL.md#thumbnails) - Upload and serve thumbnails
+- [API: thumbnail upload](../../api/artifacts.md#put-v1artifactsidthumbnail) - Upload and serve thumbnails
 - [api/artifacts.md](../../api/artifacts.md) - REST fields and screenshot endpoint
 - [team/publish-governance.md](../../team/publish-governance.md) - Teams member approval before open visibility

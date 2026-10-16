@@ -38,7 +38,7 @@ Cookie: shareout_session=…
 {
   "success": true,
   "versionNo": 3,
-  "url": "https://shareout.site/a/my-doc/"
+  "url": "$ORIGIN/a/my-doc/"
 }
 ```
 
